@@ -1,2 +1,2 @@
 # IMMM
-IMMM, Interactive Medical Mind Maps
+IMMM, Interactive Medical Mind Maps.
