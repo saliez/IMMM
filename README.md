@@ -1,4 +1,4 @@
-# IMMM, Interactive Medical Mind Maps</h1>
+# IMMM, Interactive Medical Mind Maps
 
 A project of the [Open Source Working Group of the ISfTeH, International](http://www.isfteh.org/working_groups/category/collaborative_care_team_in_open_source)
 Society for Telemedicine. 
