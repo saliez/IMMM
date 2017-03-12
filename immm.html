@@ -1,0 +1,761 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta http-equiv="content-type" content="text/html"; charset="UTF-8" />
+	<!-- 
+ 	This example works with the Movies dataset in a local neo4j server. Security must be switched off
+	If can create the movies dataset in your local database via the neo4j browser:
+	:play movies
+	and then execute the script (clicking the play button).
+	-->
+	<!--
+	     <link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>
+	     <link rel="stylesheet" href="http://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css">
+        <link rel="stylesheet" type="text/css" href="http://visjs.org/dist/vis.css"/>
+        <script type="text/javascript" src="http://visjs.org/dist/vis.js"/>
+    -->
+//<link rel="stylesheet" href="http://maxcdn.bootstrapcdn.com/font-awesome/4.6.3/css/font-awesome.min.css"/>   
+<link rel="stylesheet" href="js_lib/font-awesome.min.css"/> 
+<link rel="stylesheet" type="text/css" href="js_lib/vis.css"/>
+<script type="text/javascript" src="js_lib/vis.js" charset="utf-8"/></script>
+
+<style>
+text {
+  font: 10px sans-serif;
+}
+</style>
+
+</head> 
+
+<body onload="onloadFirstGraph();" style="background-color:#cccccc">
+
+<!--
+<script type="text/javascript">   // why this script here ?
+</script>
+-->
+<script type="text/javascript">
+
+  "use strict";
+  console.log('Start the main script, Hallo wereld');
+  
+  function DemoViz(vizoptions, alabelDisplay, adivid, apropsId, apropsFormId, apiurl) {
+         this.voptions =  vizoptions;
+			this.nodes;
+			this.links;
+			this.divid = adivid;
+			this.propsContainerId = apropsId;
+			this.propsContainer;
+			this.propsFormContainerId = apropsFormId;
+			this.propsFormContainer;
+			this.network;
+			this.labelDisplay = alabelDisplay;
+	      this.currentPropsId = "-1";
+	      this.currentPropsFormId = "-1";
+	      this.propertyHeaderStyle ="background-color:blue ; color : white ; ";
+         this.propertyHeaderStyleUpdate ="background-color:red ; color : white ; ";
+         this.propertyRowStyle = "background-color:white ;";
+         this.propertyRowStyleLabel = "background-color:#EEEEEE ;";
+         this.propertyRowStyleValue = "background-color:white ;";
+         this.neo4jApiUrl = apiurl;
+         this.saveGraph = "Save Graph";
+         this.updateOrderString = "LET xxxxx";
+         this.propsFormActive = false;
+				
+				
+//      
+// ====================== vizjs related functions ===============================
+//
+			DemoViz.prototype.idIndex = function (a,id) {        // Definition of "prototype" and why useful ?
+		      //console.log("idIndex a, id = ", a, id)
+		      if (a.length > 0) {
+			      var item = a.get(id);      // ?
+			     if (item) {
+			     	return id;
+			     }
+		      }
+		      return null;
+		    };
+
+	    DemoViz.prototype.clearGraph = function () {
+	      if (this.network) {
+	         this.network.destroy();
+	      }
+	    };
+
+		    
+			DemoViz.prototype.relIdIndex = function (a, rid) {
+		        var arraySize = a.length;
+		        var found = false;
+			    if (arraySize > 0) {
+			       a.forEach(function (itm) {
+			        if (Number(itm.rid) == Number(rid)) {   //  ?
+			       	  found = true;
+			       	  return;
+			       	}
+			       });
+			    }
+			    if (found) {
+				  return rid; 
+				} else {
+				  return null;
+				}  
+			};
+	
+			DemoViz.prototype.getNodeId = function (params) {
+		       return params.nodes[0];                                 // why [0] ?
+	    	};	  
+	
+	        DemoViz.prototype.getNodeField = function (itemId, aField) {
+		    	var item = this.nodes.get(itemId); 
+		    	return item[aField];                                    // why "aField" is in and out ?
+		    };
+		    
+		    DemoViz.prototype.getLinkField = function (itemId, aField) {
+    			var item = this.links.get(itemId); 
+    			return item[aField];
+    
+ 		   };  
+		   DemoViz.prototype.getRelationId = function (params) {
+		    	return params.edges[0];
+		   };
+		   
+		   DemoViz.prototype.checkEvent = function (params) {     // check on which kind of object the event was activated		   
+			   var nc = this.getNodeId(params);                     // strange method to detect where the event did arise .
+			   var rv = this.getRelationId(params);   
+			   if (nc) {
+                 console.log("checkEvent = node Event")			   	  
+			   	  return 'node';
+			   } else if (rv) {
+			      console.log("checkEvent = relation Event")
+			      return 'relation';
+			   } else {
+			      console.log("checkEvent = backgroundEvent");
+			      return 'background';
+			      }
+			};
+			
+// =================================== handle event =====================================================
+			
+			this.handleEvent = function (params) {
+			   console.log("handleEvent start, params = ", params)   
+			   var tp = this.checkEvent(params);
+			   if (tp == 'node')  {                      // create a new node ?
+				   if (params.eventname == "[onClick]") {
+                  console.log("----- handleEvent node, onClick, get = ", this.nodes.get(this.getNodeId(params)).neonode)				      
+				      this.nodeClick( this.nodes.get(this.getNodeId(params)).neonode );				   
+
+				   } else if (params.eventname == "[onContext]") {    //onContext means a rightclick
+                  console.log("-------- handleEvent onContext")			 	      
+			 	      // var coordinates = [params.event.x,params.event.y]; // not working, maybe should be inside a canvas ?
+			 	      // console.log("Node right click, Coordinates = ", coordinates);
+				      if (this.nodes.get(this.getNodeId(params))) {
+					      this.onContextNode( this.nodes.get(this.getNodeId(params)).neonode );
+					    
+					  } else {
+								//
+					  }
+				   } 
+			   } else if (tp == 'relation') {
+			      console.log("---------- handleEvent relation onDoubleClick")
+				   if (params.eventname == "[onDoubleClick]") {
+				      this.relationDoubleClick( this.links.get(this.getRelationId(params)).neorelation );
+				   } 
+				   // nothing
+			   
+			   } else if (tp == 'background') {
+			      console.log("....... handleEvent, backgroundEvent");
+			        // console.log("Coordinates = ", coordinates);
+			      if (params.eventname == "[onClick]") {
+			          console.log("--.........backgroundEvent clicked");
+			          //this.backgroundNewNode()
+			          }
+			      
+			   } else  {
+			       alert("handleEvent Error")
+			       
+			   }
+			}; 
+
+//============================= addGraph : add element in an existing graph but here without DB adaptation ==============
+		this.addGraph = function (jsonres) { 
+		//this.addGraph = function (aNeoResult) {         // 
+         console.log("********* addGraph: jsonres = ", jsonres)	   // of course this require a correct response !
+		   var current = this;
+		   //var res = current.prepViz(jsonres);                               // ERROR no res value ????????
+		                                                                     // Has the neo4j DB been called ?
+			var res = JSON.parse(jsonres.replace(/\n/g, '\\n') // JSON information conversion
+                  .replace(/\r/g, '\\r')
+                  .replace(/\t/g, '\\t')
+                  .replace(/\f/g, '\\f'));       
+
+      	res.results[0].data.forEach(function (row) {     // ???
+               console.log("addGraph, row = ", row);	         
+		         row.graph.nodes.forEach(function (n) {
+			         console.log("addGraph, n = ", n);
+			         if (current.idIndex(current.nodes, n.id) == null) {   // if a node id not yet exist add it 
+					      current.nodes.add({id:n.id, label:current.getDisplay(n),  group: n.labels[0],  title: n.labels[0],  neolabel:n.labels[0],  neonode: n});
+              				   
+				      }
+			     	});
+				
+			    row.graph.relationships.forEach(function(r) {
+                console.log("addGraph, r = ", r)				    
+				    if (current.relIdIndex(current.links,r.id) == null) {
+					     current.links.add({from:current.idIndex(current.nodes,r.startNode),to: current.idIndex(current.nodes,r.endNode),title:r.type, rid:r.id, neorelation: r, arrows:'to', font: {align: 'top', size:10 }});
+			    		}
+		   	    });
+             });		    
+		  };	
+		  
+			
+//================ Events registration ========================================================		
+		  this.loadGraph = function (aNeoResult) {
+         console.log("============== loadGraph: =====================================")		   
+		   var current = this;      	             	
+	    	var container = document.getElementById(this.divid);    // create a container
+	    	  console.log("loadGraph, container = ", container)
+           //console.log("loadGraph aNeoResult = ", aNeoResult)
+		   var data = this.prepViz(aNeoResult); 		   // provide the data in the vis format
+		   // console.log(">>>>> loadGraph, data = ",data);
+			    try {
+				    // ===== vis network creation
+				    this.network = new vis.Network(container, data, voptions);   
+				    
+				    // ===== definitions of wevents
+				   this.network.on("hoverNode", function (params) {
+				     params.eventname = "[onMouseOverNode]";
+				     console.log("========== network On MouseOverNode, hoverNode params = ", params)
+				     current.network.selectNodes([params.node],true);    // ??? if false; Select the nodes as the current node, but no effect ????
+				     current.mouseOverNode(current.nodes.get(params.node).neonode);   //  where is neonode defined ???
+		   		   }); 
+				   this.network.on("blurNode", function (params) {
+					 console.log("========== on blurNode params = " + params);
+				    params.eventname = "[onMouseOutNode]";                                    // ( ??? params.eventje or eventname ?)
+				    current.mouseOutNode(current.nodes.get(params.node).neonode);
+				    //current.network.unselectAll();  // in order to keep the properties of the latest selected node visible.
+		   		   }); 
+		   		   
+				   this.network.on("click", function (params) {
+					 console.log("========== network on click params = " + params);
+				    params.eventname = "[onClick]";
+		             if (current.checkEvent(params)) {current.handleEvent(params); 
+		             console.log("onClick, params = ", params)
+		             }
+		   		   }); 
+
+				    this.network.on("shiftKey", function (params) {                          // no effect ???
+					 console.log("========== network on ShifKey params = " + params);
+				     params.eventname = "[onShiftKey]";
+		             if (current.checkEvent(params)) {current.handleEvent(params); 
+		             console.log("network onShiftKey, params = ", params)
+		             }
+		   		   }); 
+		
+				   this.network.on("hoverEdge", function (params) {                
+				   	 console.log("========== on hoverEdge params = " + params);
+				       params.eventname = "[onMouseOverRelation]";
+		             current.mouseOverLink(current.links.get(params.edge).neorelation);
+		   		   }); 
+				   this.network.on("blurEdge", function (params) {
+					  console.log("========== network blurEdge params = " + params);
+				     params.eventname = "[onMouseOutRelation]";
+		             current.mouseOutLink(current.links.get(params.edge).neorelation);
+		   		  }); 
+				   this.network.on("oncontext", function (params) {          // if a right click and intended for contextual info
+						 console.log("========== network on context params = " + params);
+						 params.eventname = "[onContext]";
+				       if (current.checkEvent(params)) current.handleEvent(params);  
+				       console.log("oncontext = ", current.checkEvent(params));
+				       params.event.preventDefault();             // prevent the default behavior of a right click
+					});	
+				} catch (e) {             // why check potential errors here only ???
+				   console.log(e);
+				   alert('error in the initialisation of Network: ' + e);
+				} 
+			};
+
+// ------------------------------- prepare the data in the vis format and display the graph --------------
+			this.prepViz = function (jsonres) {                 
+           //console.log("prepViz, jasonres = ",jsonres)	  
+			  var res = JSON.parse(jsonres.replace(/\n/g, '\\n')
+		                .replace(/\r/g, '\\r')
+		                .replace(/\t/g, '\\t')
+		                .replace(/\f/g, '\\f'));
+			  console.log("prepViz before, res = ", res);
+			  this.nodes = new vis.DataSet();
+		     this.links = new vis.DataSet();
+	        console.log("prepViz after, res = ", res)
+			  var current = this;
+		     res.results[0].data.forEach(function (row) {
+		         row.graph.nodes.forEach(function (n) {
+			       if (current.idIndex(current.nodes,n.id) == null) {     // if node not yet identified in viz, add it
+					    current.nodes.add({id:n.id,label:current.getDisplay(n), group: n.labels[0], title: n.labels[0], neolabel:n.labels[0], neonode: n});   //n.labels[0] ; neonode ?????
+				   }
+				   });
+			      row.graph.relationships.forEach(function(r) {             // if relation not yet identified in viz, add it
+			      if (current.relIdIndex(current.links,r.id) == null) {
+				     current.links.add({from:current.idIndex(current.nodes,r.startNode),to:current.idIndex(current.nodes,r.endNode),title:r.type, rid:r.id, neorelation: r, arrows:'to', font: {align: 'top', size:10 }});
+					}
+			      });
+			    });
+		       return  {nodes:current.nodes, edges:current.links};   // return the vis network with nodes and links
+		    };
+
+//--------------------------------------------- display a node ---------------------------------			
+		    this.getDisplay = function (node) { 
+		      var props = node.properties;
+				    console.log("getDisplay node = ", node, " label = ", node.labels," props = ", props);
+				if (props) {
+				  var lbl = node.labels[0];
+				  var chk = this.labelDisplay.get(lbl);   // ????
+				  for (var key in props) {
+				     if (key == chk) {
+					  return props[key];
+				     }
+				  }
+				} 
+				return node.id;
+		    };
+// 
+// =========== handle vis.js events here ============================================
+//
+        this.nodeClick = function (node) {
+				 console.log( [ '=== nodeClick: node.id = ', node.id, 'node.labels = ', node.labels, 'node.properties = ', node.properties] );
+	          this.clearGraph();    // ?????????????? intended to clear all the nodes which should no more be visible ,
+				 var cyph = ' match (n)-[r]-(b) where id(n) = ' + node.id + ' return n, r, b  LIMIT 80';      // ??? How to see the links between the (b) ?????
+				                                         // How to see node at the segond level WITH restriction to specified node labels ??????
+				 console.log("request = ", cyph)
+				 //this.callNeo(cyph, "currentGraph");    // but " TypeError: res.results is undefined "
+				 this.callNeo(cyph, "newGraph");  
+	     };
+    
+		    
+	    this.mouseOverNode = function (node) {
+	           console.log( [ "mouseOverNode properties = ", node.id, node.labels, node.properties] );
+	           this.showNodeProps(node);
+	    };
+		    
+	    this.mouseOutNode = function (node) {
+       		 console.log(' mouseOutNode, node.id = ', [node.id] ) 
+             //this.clearProps();	     // commented in order to keep the presentation of the latest node	    	
+	    };
+
+		
+	    this.dataToServer = function () {
+	       console.log('dataToServer');
+	       console.log([this.nodes, this.links ] ); // nodes and links 
+	    };
+		
+	    this.mouseOverLink = function (rel) {
+	       console.log('mouseOverLink');
+	       console.log([ rel.id, rel.type , rel.properties]); // id, type, props
+	       this.showRelationProps(rel);
+	    };
+
+	    this.mouseOutLink = function (rel) {
+	       console.log('mouseOutLink');
+	       console.log([ rel.id]); // id
+          //this.clearProps();		    	
+	    };
+	    
+	    this.backgroundNewNode = function() {
+	        console.log("===> backgroundNewNode");
+	        this.showNodeProps();
+	    }
+	    
+
+	    this.onContextNode = function ( node /*, coordinates*/ ) {
+	        //console.log("onContextNode = ",[ node.id,JSON.stringify(node.labels),JSON.stringify(node.properties), JSON.stringify(coordinates)] ) ;
+	        console.log("onContextNode = ",[ node.id,JSON.stringify(node.labels),JSON.stringify(node.properties),] ) ;
+	        this.updateNodeProps(node);
+	    };
+	    
+	    this.addEdge = function (data, callback) {
+            console.log("addEdge, data = "+ data + " callback = " + callback + " data.from = " + data.from +  " data.to = " + data.to);
+            if (data.from == data.to) {
+              var r = confirm("Do you want to connect the node to itself?");
+              if (r == true) {
+                callback(data);
+              }
+            }
+            else {
+              callback(data);
+            }
+        }
+          
+
+//
+// ========== Property container functions =======================================
+//
+	    this.initPropsContainer = function () {
+					if (this.propsFormContainer){
+					  //this.clearPropsForm();}
+					  return;}
+					if (this.propsContainer) {
+					  this.clearProps()
+					} else {
+					  this.propsContainer = document.getElementById(this.propsContainerId);
+					}
+	    };
+         
+			this.clearProps = function() {
+             this.propsContainer.innerHTML = '';
+             this.currentPropsId = -1;
+         };
+         
+	
+      // -------------------------------------------------------------------------------  		    
+	    this.showNodeProps = function (node) {       // .........................
+				if (this.currentPropsId == "n" +  node.id ) {
+				    return;
+				}
+				this.currentPropsId = "n" + node.id;
+				if (this.propsFormActive) {
+					console.log("propsFormActive = ", this.propsFormActive);
+					return;
+				}
+				this.initPropsContainer();
+				
+				
+				var lbs = '';
+				var htm = '';
+				htm = htm + '<div style="border: 1px solid blue; padding: 7px;"> + "x"' ; // style not working ???
+				htm = '<div style="' + this.propertyHeaderStyle + '">Node Labels</div>';   // ??? why 'aaa "'xxxxxx'" aaa '
+				node.labels.forEach(function (l) {
+				   if (lbs == '') {
+				      lbs = l;
+				   } else {
+				      lbs = lbs + ", " + l;
+				   }
+				}); 
+				htm = htm + '<div style="' + this.propertyRowStyle + '">' + lbs + '</div>';
+				htm = htm + '<div style="' + this.propertyHeaderStyle + '">Node Properties</div>';
+				htm = htm + '<table style="width:100%>"';
+				for (var key in node.properties) {
+				     //htm = htm + '<tr style="' + this.propertyRowStyle + '"><td>' + key + '</td><td>:</td><td>' + node.properties[key] + '</td></tr>';
+				     //try to use propertyRowStyleLabel in <TD> .... ????
+				     htm = htm + '<tr><td style="' + this.propertyRowStyleLabel + '">';
+				     htm = htm + '<i>' + key + ': </i></td>';
+				     htm = htm + '<td style="' + this.propertyRowStyleValue + '">';
+				     htm = htm + node.properties[key];
+				     htm = htm + '</td></tr>';		     
+				}
+				htm = htm + '</table></div>';
+				this.propsContainer.innerHTML = htm;
+    }
+		// ============== Properties Form container functions ====================================
+	    this.initPropsForm = function () {
+               if (this.propsContainer) {
+                 this.clearProps()}          	
+             	if (this.propsFormContainer) {
+					   this.clearPropsForm()
+					} else {
+					  this.propsFormContainer = document.getElementById(this.propsFormContainerId);
+					}
+	    };
+	    
+	    this.clearPropsForm = function() {
+             console.log("clearPropsForm");
+             this.propsFormContainer.innerHTML = '';
+             this.currentFormPropsId = -1;
+             this.propsFormActive = false;
+         };
+         
+      this.itemUpdate = function (key, oldData) {     //Update only one item
+           console.log("itemUpdate() key = ", key, "  oldData = ", oldData);
+           let htm = "";
+           htm = htm + '<tr>';
+           htm = htm + '<td style="width=40px;"' /* + this.propertyRowStyleLabel */ + '"><i>' + key + ': </i>';   // <br /> <td>
+           //htm = htm + '<td>';
+           htm = htm + '<textarea id= "newText" rows="2" cols="80"> ' + oldData + '</textarea>';
+           htm = htm + '</td><br />';
+           htm = htm + '</tr>';
+           return htm;
+           }
+           
+      this.updateNodeOnDB =function(nodeData) {
+           console.log("updateNodeOnDB, data = ", nodeData);
+      }
+
+      
+      this.updateNodeProps = function (node) {       // .........................
+				//if (this.currentPropsFormId == "n" +  node.id ) {
+				//    return;
+				//}
+				console.log("updateNodeProps()");
+				//node
+				this.currentPropsFormId = "n" + node.id;
+				this.initPropsForm();
+				if (this.prospFormActive) {return;}   // ???
+				this.propsFormActive = true;
+				     
+				var lbs = '';
+				var htm = "";
+				console.log("Props Form table started");
+				htm = "";
+				htm = htm + '<div  style="width: 600px; height: 100% ; border: 1px solid red; padding: 7px;">'
+				htm = htm = '<div style="' + this.propertyHeaderStyleUpdate + '">Node Labels</div>';   // ??? why 'aaa "'xxxxxx'" aaa '
+				node.labels.forEach(function (l) {
+				   if (lbs == '') {
+				      lbs = l;
+				   } else {
+				      lbs = lbs + ", " + l;
+				   }
+				}); 
+				htm = htm + '<div style="' + this.propertyRowStyle + '">' + lbs + '</div>';
+				htm = htm + '<div style="' + this.propertyHeaderStyleUpdate + '">Node Properties</div>"';
+				
+				htm = htm + '<table style="width:100%>';
+			   for (var key in node.properties) {     
+				     //let htm = "";
+                 htm = htm + '<tr>';
+                 htm = htm + '<td style="width=40px;"'    /* + this.propertyRowStyleLabel */ + '"><i>' + key + ': </i>';   // <br /> <td>
+                 htm = htm + '<td>';
+                 //htm = htm + '<textarea id= "newText" rows="2" cols="80"> ' + oldData + '</textarea>';
+                 //htm = htm + '<input type="textarea" value=properties[key]>';
+                 //dviz.getElementById(properties[key]).value = data[key];
+                 htm = htm + '</td><br />';
+                 htm = htm + '</tr>';
+				     
+				     //htm = this.itemUpdate(key, node.properties[key] );
+				     console.log("Node properties, htm = ", htm);
+				     
+				 }
+				 htm = htm + "</td></tr> </table>";
+				     
+	/*			     
+			     itemContainer = propsFormContainer.getElementById("currentItem");
+				     htm = htm + '<tr><td style="' + this.propertyRowStyleLabel + '">'; // why the style apply only to the first iteration ???
+				     htm = htm + '<i>' + key + ': </i><br /></td>';                    // why the <br /> not in the first iteration ???
+				     htm = htm + '<td style="' + this.propertyRowStyleValue + '">';
+				     htm = htm + '<textarea id= "newText" rows="3" cols="60"> ' + node.properties[key] + '</textarea><br />';
+				     //newData = propsFormContainer.getElementById("newtText").value;
+				     //newData = propsFormContainer.getElementById("newtText").innerHTML;
+				    //propertiesNew[key] = itemContainer.getElementById("newtText").innerHTML;
+				     console.log("node.properties[key] = ", node.properties[key], "propertiesNew[key] = ", propertiesNew[key]); 
+				     
+   */
+				
+		      
+				
+				htm = htm + "----------------------------------------------------------<br />";
+				console.log("End of update form ");
+				//htm = htm + '<input type="button" onClick="dviz.updateNodeOnDB(dviz.updateOrderString);" value= " OK Save"/> ';
+				//htm = htm + '<input type="button" onClick="dviz.updateNodeOnDB(dviz.node.properties);" value= " OK Save"/> ';
+				//htm = htm + '<input type="button" onClick="alert();" value= " OK Save"/> ';
+				htm = htm + '<input type="button" onClick="dviz.updateNodeOnDB();" value= " OK Save"/> ';
+				
+				htm = htm + ' - <input  type="button" onClick="dviz.clearPropsForm();" value= " Cancel "/> ';
+				//htm = htm + "</td></tr> </table>";
+				this.propsFormContainer.innerHTML = htm;
+				console.log("Node Form Save or Cancel prepared");
+    }
+    
+    
+		this.showRelationProps = function (rls) {
+				if (this.currentPropsId == "r" + rls.id ) {
+				    return;
+				}
+				if (this.propsFormActive) {return;}
+				this.currentPropsId = "r" + rls.id;
+	         this.initPropsContainer();
+
+				var lbs = '';
+				var htm = '<div style="' + this.propertyHeaderStyle + '">Relationship Type</div>';
+				htm = htm + '<div style="' + this.propertyRowStyle + '">' + rls.type  + '</div>';
+				htm = htm + '<div style="' + this.propertyHeaderStyle + '">Relationship Properties</div>';
+				htm = htm + '<table>';
+				for (var key in rls.properties) {
+				     htm = htm + '<tr style="' + this.propertyRowStyle + '"><td>' + key + '</td><td>: </td><td>' + rls.properties[key] + '</td></tr>';
+				}
+				htm = htm + '</table>';
+				this.propsContainer.innerHTML = htm;
+     };
+
+
+				
+// ========================== neo4j call function ========================================================
+	    // with async http call, when http call is finished loadGraph or addGraph is called.
+	    // if callType = "new" then a new visualization will be displayed
+	    // else the result of the neo call will be added to the existing visualization.
+	    //
+	    this.callNeo = function (aCypher, callType) {
+		      console.log("callNeo, this = ", this);
+		      console.log("callNeo, aCypher = ", aCypher);
+		      
+		      // post, make sure that the result is graph  ?????
+		      var payLoad = '{"statements":[{"statement":"' + aCypher + '", "resultDataContents":["graph"]}]}';
+		      console.log("payLoad = ", payLoad);
+			  	var xmlhttp;
+		      if (window.XMLHttpRequest)
+		      {
+			       // code for IE7+, Firefox, Chrome, Opera, Safari
+			       xmlhttp = new XMLHttpRequest();
+		      } else {
+			      // code for IE6, IE5
+			      xmlhttp = new ActiveXObject("Microsoft.XMLHTTP");
+		      }
+		      
+		       
+		      var current = this;
+		      if (callType == "newGraph") {
+		        xmlhttp.onreadystatechange=function() {
+			        if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+					       //console.log("callNeo, newGraph, responseText = ", xmlhttp.responseText)
+					       current.handleResponse(xmlhttp.responseText); 
+					       
+				      } 
+			      };
+			      console.log(">>>>>>>>> callNeo, newGraph, current = ", current)
+		      } else {
+			      xmlhttp.onreadystatechange=function() {
+			        if (xmlhttp.readyState==4 && xmlhttp.status==200) {
+					       console.log("callNeo, Add Graph, responseText = ", xmlhttp.responseText)
+					       current.handleAddResponse(xmlhttp.responseText); 
+					       
+				      } 
+			      };
+			      console.log(">>>>>>>>> callNeo, currentGraph, current = ", current)
+		      }
+		      xmlhttp.open('POST', this.neo4jApiUrl +'/transaction/commit',true);  // choice of an url
+		      xmlhttp.setRequestHeader("Content-type","application/json");
+		      console.log("callNeo, send, payLoad = ", payLoad)
+		      xmlhttp.send(payLoad);
+		      
+		    };
+		    
+		    // ------------------------------------------------------- 
+		    
+		    this.handleResponse = function (responseJSON) {
+		        console.log("handleResponse: responseJSON = ", responseJSON);
+			     this.loadGraph(responseJSON); 
+		    }; 
+			  	
+          // ---------------------------------------------------------
+		    this.handleAddResponse = function(responseJSON) {
+		        console.log("handleAddResponse, responseJSON = ", responseJSON);
+			     this.addGraph(responseJSON); 
+		    };
+
+
+
+		} 
+//========================= Definitions ==============================
+//This script part contains the definitions for the icons, colors, and which property of a node should be displayed
+//and instantiates the DemoViz object.
+
+
+    var divid = 'grph';
+    var propsId = 'props';
+    var propsFormId = "propsForm";
+    //
+    // Label to AwesomeFont mapping
+    // if you check the the AwesomFont reference card you should use the \u notation.
+    // http://fortawesome.github.io/Font-Awesome/cheatsheet/
+
+	  
+
+  	  var voptions = {interaction: {hover:true}
+	  	             , edges : { arrowStrikethrough: false 
+	  	             	         , color : {inherit :'from'}
+	  	             	         , hoverWidth: 5 } 
+	  	             ,groups: { HealthIssue : { shape :'circle', icon : {face : 'FontAwesome', code : '\uf008', size : 40 }, color : '#FF6666' } //fa-film \uf008
+                            , Patient : { shape :'square', icon : {name : 'FontAwesome', code : '\uf007', size : 30, color : '#AA2222' }, color : '#944dff' }  
+                            , Patient : {  color : '#944dff' }  
+                            , Patient_group : {color : '#9944EE'}    
+                            , Observation : { color : '#FFFF77' }   // fa-tag /uf02b  shape :'square', icon : {face : 'FontAwesome', code : '\uf02b', size : 30, color : '#AAAA00' }, 
+                            , Action : {color :  '#88FF88' } // fa-tag /uf02b    shape : 'square', 
+                            //, Action : { shape : 'square'  , icon: {face : 'FontAwesome', code : '\uf02b', size : 30,  }, color : '#88FF88' }   // fa-tag /uf02b
+                            , Event : { color : '#70dbdb' }   // fa-tag /uf02b    shape :'icon', 'circle' : {face : 'FontAwesome', code : '\uf02b', size : 30, color : '#AAAA00' },
+                            //, HealthIssue : { shape :'icon', icon : {face : 'FontAwesome', code : '\uf02b', size : 30, color : '#AA1111' }, color : {border : '#F5E768'} }     // fa-tag /uf02b
+                            //, M : { shape :'icon', icon : {name : 'FontAwesome', code : '\uf007', size : 80, color : '#AAAAFF' }, color : {border : '#0000FF'} } //fa-film \uf008
+                            , F : { color: '#FFAAAA'}
+                            , M : { color: '#AAAAFF'}
+                            
+                            // __default : { shape :'icon', icon : {face : 'FontAwesome', code : '\uf02b', size : 300, color : '#F5E768' }, color : {border : '#F5E768'} }     // fa-tag /uf02b
+		                      } 
+		               };
+	
+   //
+    // Label and display property 
+    //
+    var labelDisplay = new Map();
+    labelDisplay.set('Patient_group', 'name');    
+    labelDisplay.set('Patient', 'name');    
+    labelDisplay.set('HealthIssue', 'name');
+    labelDisplay.set('Observation', 'title');
+    labelDisplay.set('Action', 'name');
+    labelDisplay.set('Event', 'name');
+    labelDisplay.set('Agent', 'name');
+    labelDisplay.set('Test', 'name');
+    
+    labelDisplay.set('M', 'name');
+    labelDisplay.set('F', 'name');
+    labelDisplay.set('Test', 'name');
+
+    // 
+    //var urlDB = 'http://localhost:7474/db/data' ;
+    var urlDB = 'http://cctos:RbV6dfFdCVnkm4KU2wyb@cctos.sb04.stations.graphenedb.com:24789/db/data/' ;
+    console.log("Connecting to urlDB = ", urlDB);
+    var dviz = new DemoViz(voptions, labelDisplay, divid, propsId, propsFormId, urlDB) ;
+ 
+    
+    function queryNow() {
+        var q = document.getElementById("query");
+ 	      dviz.callNeo( queryFormatter(q.value), "newGraph");
+    };
+    function queryFormatter(aQuery) {
+	     return aQuery.replace(/"/g,'\'');
+    }
+    
+               // Created by CBV
+    //
+    //function addNode(aLabel, aPropertyName, aPropertyValue) {
+    function addNode() {
+    	//var query = "MATCH (a) where id(a) = 1519 CREATE (n:" + aLabel + " { " + aPropertyName + ": '" + aPropertyValue + "' }) CREATE (a)-[r:IS_RELATED_TO]->(n) return a,r,n"; 
+      //var query = 'MERGE (p:M{name:"Joseph DUPONT"}), MATCH (g:Patient_group{name:"Patient Group"}) MERGE (g)-[r:INCLUDE]->(g) RETURN p, r, g'    	
+      //var query = "CREATE (n:Patient{name:'new Patient'})  return n" 	
+      var q = document.getElementById("query");
+      var request = queryFormatter(q.value)
+    	console.log("addNode request = ", request);
+    	//dviz.callNeo( queryFormatter(query), "add" );     // PROBLEM = no effetct at all ?????????????????
+    	//dviz.callNeo(query, "currentGraph" );
+    	dviz.callNeo(request, "currentGraph");
+    };
+        
+    function onloadFirstGraph() {
+      var q = "MATCH (n)-[r]-(x) RETURN n, r, x LIMIT 80" 
+    	console.log("Load First Graph, q = ", q);   // = OK
+    	dviz.callNeo(q, "newGraph" ); 
+    };
+</script>
+
+<table style="width:100%; background-color:#DDDDDD">   <!--background-color could change in function of the current application type of task.-->    
+    <tr >
+    <!--
+       <td><textarea id="query" rows="5" cols="100">match (k:Person {name :'Kevin Bacon'}) match (c:Person {name : 'Clint Eastwood'} ) match path = allShortestPaths((k)-[r*]-(c)) return path</textarea></td>
+    -->
+    <td>CCTOS</td>    
+    <td><textarea id="query" rows="1" cols="200">MATCH (n)-[r]-(x) RETURN n, r, x LIMIT 100</textarea></td>
+    <td><input type="button" onClick="queryNow();" value="Query-Load"/></td>
+    <!-- 
+        Created by CBV the function addNode is just an example 
+    -->
+    <!--<td><input type="button" onClick="addNode('Test','uid','xhajs888');" value="Add Node xxx"/></td> -->
+    <td><input type="button" onClick="addNode();" value="Add Node"/></td>
+    </tr>
+</table>
+
+<table style="background-color:#CCCCCC">
+    <tr>
+    <td valign="top" width="100%" > <div id="grph" style="width:100%;height:700px"></td>
+    <td valign="top" width="500px"> 
+    <div id="props"     style="width: 600px; height: 100% ;<!-- border: 1px solid blue; padding: 7px; -->" ></div>
+    <div id="propsForm" style="width: 600px; height: 100% ; border: 1px solid red; padding: 7px;" ></div></td>
+</table>
+
+</body>
+</html>
+
+
