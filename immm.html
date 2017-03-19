@@ -622,7 +622,7 @@ text {
 		      }
 		      xmlhttp.open('POST', this.neo4jApiUrl +'/transaction/commit',true);  // choice of an url
 		      xmlhttp.setRequestHeader("Content-type","application/json");
-		      console.log("callNeo, send, payLoad = ", payLoad)
+		      console.log("callNeo, xmlhttp.send, payLoad = ", payLoad)
 		      xmlhttp.send(payLoad);
 		      
 		    };
