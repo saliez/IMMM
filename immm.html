@@ -620,7 +620,8 @@ text {
 			      };
 			      console.log(">>>>>>>>> callNeo, currentGraph, current = ", current)
 		      }
-		      xmlhttp.open('POST', this.neo4jApiUrl +'/transaction/commit',true);  // choice of an url
+		      //xmlhttp.open('POST', this.neo4jApiUrl +'/transaction/commit',true);  // choice of an url
+		      xmlhttp.open('POST', this.neo4jApiUrl +'/transaction/commit',true, "cctos", "RbV6dfFdCVnkm4KU2wyb");  // recommended by Kees
 		      xmlhttp.setRequestHeader("Content-type","application/json");
 		      console.log("callNeo, xmlhttp.send, payLoad = ", payLoad)
 		      xmlhttp.send(payLoad);
@@ -640,9 +641,7 @@ text {
 			     this.addGraph(responseJSON); 
 		    };
 
-
-
-		} 
+		 };
 //========================= Definitions ==============================
 //This script part contains the definitions for the icons, colors, and which property of a node should be displayed
 //and instantiates the DemoViz object.
@@ -698,7 +697,8 @@ text {
 
     // 
     //var urlDB = 'http://localhost:7474/db/data' ;
-    var urlDB = 'http://cctos:RbV6dfFdCVnkm4KU2wyb@cctos.sb04.stations.graphenedb.com:24789/db/data/' ;
+    //var urlDB = 'http://cctos:RbV6dfFdCVnkm4KU2wyb@cctos.sb04.stations.graphenedb.com:24789/db/data/' ;
+    var urlDB = 'http://cctos.sb04.stations.graphenedb.com:24789/db/data/' ;  // recommended by Kees
     console.log("Connecting to urlDB = ", urlDB);
     var dviz = new DemoViz(voptions, labelDisplay, divid, propsId, propsFormId, urlDB) ;
  
