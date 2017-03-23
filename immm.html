@@ -18,9 +18,12 @@
     
 <i-- master branch --> branch
 
+<script type="text/javascript" src="js_lib/vis.js" charset="utf-8"/></script>
+<script type="text/javascript" src="js_lib/jquery-2.2.4.min.js" charset="utf-8"></script>
+<script type="text/javascript" src="js_lib/d3.min.js" charset="utf-8"></script>            // necessary here, having vis.s ?
+
 <link rel="stylesheet" href="js_lib/font-awesome.min.css"/> 
 <link rel="stylesheet" type="text/css" href="js_lib/vis.css"/>
-<script type="text/javascript" src="js_lib/vis.js" charset="utf-8"/></script>
 
 <style>
 text {
@@ -59,7 +62,7 @@ text {
          this.propertyRowStyle = "background-color:white ;";
          this.propertyRowStyleLabel = "background-color:#EEEEEE ;";
          this.propertyRowStyleValue = "background-color:white ;";
-         this.neo4jApiUrl = apiurl;
+         this.urlDB = apiurl;
          this.saveGraph = "Save Graph";
          this.updateOrderString = "LET xxxxx";
          this.propsFormActive = false;
@@ -178,7 +181,7 @@ text {
 			       
 			   }
 			}; 
-
+/*
 //============================= addGraph : add element in an existing graph but here without DB adaptation ==============
 		this.addGraph = function (jsonres) { 
 		//this.addGraph = function (aNeoResult) {         // 
@@ -210,7 +213,7 @@ text {
              });		    
 		  };	
 		  
-			
+*/		
 //================ Events registration ========================================================		
 		  this.loadGraph = function (aNeoResult) {
          console.log("============== loadGraph: =====================================")		   
@@ -329,7 +332,7 @@ text {
 				                                         // How to see node at the segond level WITH restriction to specified node labels ??????
 				 console.log("request = ", cyph)
 				 //this.callNeo(cyph, "currentGraph");    // but " TypeError: res.results is undefined "
-				 this.callNeo(cyph, "newGraph");  
+				 this.callNeo(cyph);  
 	     };
     
 		    
@@ -578,14 +581,76 @@ text {
 
 				
 // ========================== neo4j call function ========================================================
-	    // with async http call, when http call is finished loadGraph or addGraph is called.
+	    // with async http call, when http call is finished loadGraph is called.
 	    // if callType = "new" then a new visualization will be displayed
 	    // else the result of the neo call will be added to the existing visualization.
 	    //
-	    this.callNeo = function (aCypher, callType) {
+	    this.callNeo = function (aCypher) {
 		      console.log("callNeo, this = ", this);
 		      console.log("callNeo, aCypher = ", aCypher);
 		      
+		 //=========================== from db_display example =====     
+		      
+	    function restPost(data) {
+        console.log("restPost(data) = ",restPost(data));        
+        var strData = JSON.stringify(data);
+        return $.ajax({
+            type: "POST",
+            beforeSend: function (request) {
+                if (AUTHORIZATION != undefined) {
+                    request.setRequestHeader("Authorization", AUTHORIZATION);
+                }
+            },
+            //url: Protocolinput.value + "://" + hostinput.value + ":" + portinput.value + "/db/data/transaction/commit",
+            url: "http//cctos.sb04.stations.graphenedb.com:24789/db/data/transaction/commit",
+            contentType: "application/json",    // attention to ".value "
+            data: strData
+        });
+    }
+
+    /**
+     * Function to call to display a new graph.
+     */
+    function displayGraph() {
+        // Create the authorization header for the ajax request. 
+        console.log("displayGraph start");
+        AUTHORIZATION = "Basic " + btoa(userinput.value + ":" + passinput.value);
+        console.log("AUTHORIZATION = ", AUTHORIZATION);
+        // Show loading elements.
+        $("#loading").show();
+        $("#loadingBar").show();
+        document.getElementById('text').innerHTML = '0%';
+        document.getElementById('bar').style.width = '0';
+        document.getElementById('loadingBar').style.opacity = 1;
+        // Post Cypher query to return node and relations and return results as graph.
+        restPost({
+            "statements": [
+                {
+                    "statement": "match (n),()-[r]-() return n,r",
+                    "resultDataContents": ["graph"]
+                }
+            ]
+        }).done(function (data) {
+            console.log("done");
+            $("#loading").hide();
+
+            // Parse results and convert it to vis.js compatible data.
+            var graphData = parseGraphResultData(data);
+            var nodes = convertNodes(graphData.nodes);
+            var edges = convertEdges(graphData.edges);
+            var visData = {
+                nodes: nodes,
+                edges: edges
+            };
+
+            console.log("displayGraph done, visData = ", visData);
+            displayVisJsData(visData);
+        });
+    }
+
+		 //=========================== END of from db_display example =====     
+
+		  /*
 		      // post, make sure that the result is graph  ?????
 		      var payLoad = '{"statements":[{"statement":"' + aCypher + '", "resultDataContents":["graph"]}]}';
 		      console.log("payLoad = ", payLoad);
@@ -601,7 +666,9 @@ text {
 		      
 		       
 		      var current = this;
-		      if (callType == "newGraph") {
+		      
+		      
+		      
 		        xmlhttp.onreadystatechange=function() {
 			        if (xmlhttp.readyState==4 && xmlhttp.status==200) {
 					       //console.log("callNeo, newGraph, responseText = ", xmlhttp.responseText)
@@ -609,27 +676,21 @@ text {
 					       
 				      } 
 			      };
-			      console.log(">>>>>>>>> callNeo, newGraph, current = ", current)
-		      } else {
-			      xmlhttp.onreadystatechange=function() {
-			        if (xmlhttp.readyState==4 && xmlhttp.status==200) {
-					       console.log("callNeo, Add Graph, responseText = ", xmlhttp.responseText)
-					       current.handleAddResponse(xmlhttp.responseText); 
-					       
-				      } 
-			      };
-			      console.log(">>>>>>>>> callNeo, currentGraph, current = ", current)
-		      }
+			      console.log(">>>>>>>>> callNeo, current = ", current)
+		      
 		      //xmlhttp.open('POST', this.neo4jApiUrl +'/transaction/commit',true);  // choice of an url
 		      xmlhttp.open('POST', this.neo4jApiUrl +'/transaction/commit',true, "cctos", "RbV6dfFdCVnkm4KU2wyb");  // recommended by Kees
 		      xmlhttp.setRequestHeader("Content-type","application/json");
 		      console.log("callNeo, xmlhttp.send, payLoad = ", payLoad)
 		      xmlhttp.send(payLoad);
 		      
+		    */
+		      
 		    };
 		    
 		    // ------------------------------------------------------- 
 		    
+		  /* 
 		    this.handleResponse = function (responseJSON) {
 		        console.log("handleResponse: responseJSON = ", responseJSON);
 			     this.loadGraph(responseJSON); 
@@ -640,6 +701,7 @@ text {
 		        console.log("handleAddResponse, responseJSON = ", responseJSON);
 			     this.addGraph(responseJSON); 
 		    };
+		  */
 
 		 };
 //========================= Definitions ==============================
@@ -698,19 +760,20 @@ text {
     // 
     //var urlDB = 'http://localhost:7474/db/data' ;
     //var urlDB = 'http://cctos:RbV6dfFdCVnkm4KU2wyb@cctos.sb04.stations.graphenedb.com:24789/db/data/' ;
-    var urlDB = 'http://cctos.sb04.stations.graphenedb.com:24789/db/data/' ;  // recommended by Kees
+    //var urlDB = 'http://cctos.sb04.stations.graphenedb.com:24789/db/data/' ;  // recommended by Kees
     console.log("Connecting to urlDB = ", urlDB);
     var dviz = new DemoViz(voptions, labelDisplay, divid, propsId, propsFormId, urlDB) ;
  
     
     function queryNow() {
         var q = document.getElementById("query");
- 	      dviz.callNeo( queryFormatter(q.value), "newGraph");
+ 	      dviz.callNeo( queryFormatter(q.value));
     };
     function queryFormatter(aQuery) {
 	     return aQuery.replace(/"/g,'\'');
     }
     
+  /*  
                // Created by CBV
     //
     //function addNode(aLabel, aPropertyName, aPropertyValue) {
@@ -723,13 +786,13 @@ text {
     	console.log("addNode request = ", request);
     	//dviz.callNeo( queryFormatter(query), "add" );     // PROBLEM = no effetct at all ?????????????????
     	//dviz.callNeo(query, "currentGraph" );
-    	dviz.callNeo(request, "currentGraph");
+    	dviz.callNeo(request);
     };
-        
+  */
     function onloadFirstGraph() {
       var q = "MATCH (n)-[r]-(x) RETURN n, r, x LIMIT 80" 
     	console.log("Load First Graph, q = ", q);   // = OK
-    	dviz.callNeo(q, "newGraph" ); 
+    	dviz.callNeo(q); 
     };
 </script>
 
