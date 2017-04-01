@@ -2,41 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>IMMM</title>
+    <title>db_display_Graphene--fixed-var</title>
     <style>
 
-        #graph_div {
+        #vis {
             width: 100%;
             height: 900px;
             background-color: #F8F9FB;
             border: 1px solid lightgray;
-        }
-        
-        #popup_div {
-            display:none;
-            position:absolute;
-            top:200px;
-            left:100px;
-            z-index:299;
-            width:400px;
-            height:400px;
-            background-color: #f9f9f9;
-            border-style:solid;
-            border-width:4px;
-            border-color: #AAA;
-        }
-         #edit_popup_div {
-            display:none;
-            position:absolute;
-            top:300px;
-            left:200px;
-            z-index:299;
-            width:400px;
-            height:400px;
-            background-color: #f9f9f9;
-            border-style:solid;
-            border-width:8px;
-            border-color: #AAA;
         }
 
         #loading {
@@ -44,13 +17,13 @@
             display: none;
         }
 
-        #loadingBar_div {
+        #loadingBar {
             position: absolute;
             top: 0;
             left: 0;
             width: 902px;
             height: 902px;
-            background-color: rgba(250, 250, 250, 0.8);
+            background-color: rgba(200, 200, 200, 0.8);
             -webkit-transition: all 0.5s ease;
             -moz-transition: all 0.5s ease;
             -ms-transition: all 0.5s ease;
@@ -79,7 +52,7 @@
         }
 
         div.outerBorder {
-            position: absolute;   <!--relative;-->
+            position: relative;
             top: 400px;
             width: 600px;
             height: 44px;
@@ -108,7 +81,7 @@
             border-radius: 10px;
         }
 
-        #bar_div {
+        #bar {
             position: absolute;
             top: 0;
             left: 0;
@@ -123,16 +96,15 @@
 
     </style>
 </head>
-<body onload="callNeoDB('match (n),()-[r]-() return n,r limit 100');" style="background-color:#cccccc">
+<body>
 
-<!--<p>
-IMMM, "Interactive Medical Mind Maps", experimental version using <a href="https://neo4j.com/">Neo4j</a> and <a
-        href="http://visjs.org/">Vis.js</a>.
-    
+<p>
+    This page is a simple example that can be used to display the content of a Neo4j database using <a
+        href="http://visjs.org/">Vis.js</a> library.
+    To be used you need to provide the conection details of a running Neo4j database.
 </p>
--->
 <label>
-    Protocol:<input id="protocolinput" type="text" size= 8 value= "http">
+    Protocol:<input id="Protocolinput" type="text" size= 8 value="http">
 </label>
 <label>
     Host:<input id="hostinput" type="text" value="cctos.sb04.stations.graphenedb.com"  >    <!--"localhost"-->
@@ -148,56 +120,38 @@ IMMM, "Interactive Medical Mind Maps", experimental version using <a href="https
     >
 </label>
 <label>
-    Limit:<input id="limitinput" type="number" size=10 value="80"> 
-</label>
-<br />
-<label>
-   DB request: <input id="dbRequest" type="textarea" size="200" value="match (n),()-[r]-() return n, r limit 100">
+    Limit:<input id="limit" type="number" size=10 value="80">
 </label>
 
-<label>
-    <button onclick="callNeoDB(dbRequest.value)">GO</button>
-    <!--<img id="loading" src="images/ajax-loader.gif">  -->
-</label>
+<div>
+    <button onclick="displayGraph()">Display Graph</button>
+    <img id="loading" src="images/ajax-loader.gif">
+</div>
 
 
-<div id="wrapper_view">             
-    <div id="graph_div"></div>
-    <div id="popup_div">=== test popup_div ==============</div>
-    <div id="edit_popup_div">=== test edit_popup_div ==============</div>
-    <div id="loadingBar_view"></div>
-    <div class="outerBorder">
+<div id="wrapper">                  //....
+    <div id="vis"></div>
+    <div id="loadingBar">
+        <div class="outerBorder">
             <div id="text">0%</div>
             <div id="border">
-                <div id="bar_div"></div>
+                <div id="bar"></div>
             </div>
+        </div>
     </div>
 </div>
 
 </div>
-
-<script src="js_lib/jquery-2.2.4.min.js" charset="utf-8"></script>
-<script src="js_lib/d3.min.js" charset="utf-8"></script>
-<script src="js_lib/vis.js"></script>
-
+<script src="../js_lib/jquery-2.2.4.min.js" charset="utf-8"></script>
+<script src="../js_lib/d3.min.js" charset="utf-8"></script>
+<script src="../js_lib/vis.js"></script>
 <script>
-//var server{};
 
-var server = {protocol:protocolinput.value, 
-             host:hostinput.value,
-             port:portinput.value,
-             user:userinput.value,
-             pass:passinput.value,
-             limit:limitinput.value
-}; 
  /**
      * Uses JQuery to post an ajax request on Neo4j REST API
      */
-    //var popupContainer;
-    
     function restPost(data) {
         var strData = JSON.stringify(data);
-        console.log("RestPost: strData = ", strData);       
         return $.ajax({
             type: "POST",
             beforeSend: function (request) {
@@ -205,7 +159,7 @@ var server = {protocol:protocolinput.value,
                     request.setRequestHeader("Authorization", AUTHORIZATION);
                 }
             },
-            url: server.protocol + "://" + server.host + ":" + server.port + "/db/data/transaction/commit",
+            url: Protocolinput.value + "://" + hostinput.value + ":" + portinput.value + "/db/data/transaction/commit",
             contentType: "application/json",    // attention to ".value "
             data: strData
         });
@@ -214,29 +168,22 @@ var server = {protocol:protocolinput.value,
     /**
      * Function to call to display a new graph.
      */
-    function callNeoDB(cypherRequest) {
+    function displayGraph() {
         // Create the authorization header for the ajax request. 
-        console.log("server.host = ", server.host );
-        server.host = hostinput.value;
-        if (server.host == "local") {
-            console.log("if server.host = local");
-            server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"}; };
-        console.log("server = ", server);
-        console.log("callNeoDB start");
-        AUTHORIZATION = "Basic " + btoa(server.user + ":" + server.pass);
+        console.log("displayGraph start");
+        AUTHORIZATION = "Basic " + btoa(userinput.value + ":" + passinput.value);
         console.log("AUTHORIZATION = ", AUTHORIZATION);
         // Show loading elements.
         $("#loading").show();
-        $("#loadingBar_view").show();
+        $("#loadingBar").show();
         document.getElementById('text').innerHTML = '0%';
-        document.getElementById('bar_div').style.width = '0';
-        document.getElementById('loadingBar_view').style.opacity = 1;
+        document.getElementById('bar').style.width = '0';
+        document.getElementById('loadingBar').style.opacity = 1;
         // Post Cypher query to return node and relations and return results as graph.
         restPost({
             "statements": [
                 {
-                    //"statement": "match (n),()-[r]-() return n,r",
-                    "statement": cypherRequest, 
+                    "statement": "match (n),()-[r]-() return n,r",
                     "resultDataContents": ["graph"]
                 }
             ]
@@ -258,124 +205,42 @@ var server = {protocol:protocolinput.value,
     }
 
     function displayVisJsData(data) {
-        var container = document.getElementById('graph_div');
+        var container = document.getElementById('vis');
 
         var options = {
-            interaction: {hover:true},
             nodes: {
-                shape: 'ellipse'
+                shape: 'circle'
             },
             edges: {
                 arrows: 'to'
-            },
-            groups: {
-            	Observation: {
-            		shape: 'circle'
-            		},
             }
         };
 
         // initialize the network!
         var network = new vis.Network(container, data, options);
-        console.log("Network created");
-        
 
-        network.on("hoverNode", function (params) { 
-            network.selectNodes([params.node],true);  // ?? is this necessary in case of single node selection ?
-            var nodeId = params.node;
-            var nodeToShow = data.nodes[nodeId];
-            showNodePopup(nodeToShow);
-        });
-        network.on("blurNode", function (params) { 
-            var nodeID = params.node;
-            clearNodePopup();
-            params.node = [];
-        });
-        network.on("click", function(params){
-            var nodeId = parseInt(params.nodes[0]);
-            clearNodePopup();
-            console.log("------------------ on click nodeId = ", nodeId);
-            if (nodeId) {
-                navigate(nodeId);
-            };
-        });
-        
-        network.on("oncontext", function(params){
-            params.event.preventDefault();
-            var nodeId = parseInt(params.nodes[0]);
-            var nodeData = data.nodes[nodeId];
-            editNodePopup(nodeData);
-            params.node = [];
-        });
-        
-        network.once("stabilizationIterationsDone", function () {    // objective ???  the first time ???
-            document.getElementById('text').innerHTML = '100%';
-            document.getElementById('bar_div').style.width = '496px';
-            document.getElementById('loadingBar_view').style.opacity = 0;
-            // really clean the dom element
-            setTimeout(function () {
-                $("#loadingBar_view").hide();
-            }, 500);
-        });        
         network.on("stabilizationProgress", function (params) {    // objective ???
             var maxWidth = 496;
-            //var maxWidth = 800;
             var minWidth = 20;
             var widthFactor = params.iterations / params.total;
             var width = Math.max(minWidth, maxWidth * widthFactor);
-            
+
+            document.getElementById('bar').style.width = width + 'px';
             document.getElementById('text').innerHTML = Math.round(widthFactor * 100) + '%';
-            document.getElementById('bar_div').style.width = width + 'px';
-
+        });
+        network.once("stabilizationIterationsDone", function () {    // objective ???  the first time ???
             document.getElementById('text').innerHTML = '100%';
-            document.getElementById('bar_div').style.width = '496px';
-            document.getElementById('loadingBar_view').style.opacity = 0;
+            document.getElementById('bar').style.width = '496px';
+            document.getElementById('loadingBar').style.opacity = 0;
             // really clean the dom element
-            setTimeout(function () {        });
-            });
-    }
-     
-    function showNodePopup(node) {
-        popupContainer = document.getElementById('popup_div');
-        popupContainer.style.display = "block";   //  ?
-        var htm = '';
-        for (var key in node) {
-            htm += '<i>' + key + ' : </i> ' + node[key] + "<br />";}
-        popupContainer.innerHTML = htm;
-    }
-    
-    function clearNodePopup(){
-        popupContainer.innerHTML = '';
-        document.getElementById("popup_div").style.display = "none";
+            setTimeout(function () {
+                $("#loadingBar").hide();
+            }, 500);
+        });
     }
 
-    function editNodePopup(nodeData) {
-        clearNodePopup();       
-        editPopupContainer = document.getElementById('edit_popup_div');
-        editPopupContainer.style.display = "block";   //  ?
-        var htm = '<h2>Edit Node</h2>';
-        for (var key in nodeData) {
-            htm += '<i>' + key + ' : </i> ' + nodeData[key] + "<br />";};
-        htm += "<br /><button onclick='clearEditNodePopup()'> Cancel </button> --- Save(to be installed)";
-        editPopupContainer.innerHTML = htm;
-        }        
-        
-     function clearEditNodePopup(){
-        editPopupContainer.innerHTML = '';
-        document.getElementById("edit_popup_div").style.display = "none";
-    }
-    
-    
-    function navigate(nodeId)  {
-    	  console.log("xxxxxx naviguate from nodeId = ", nodeId);
-    	  var requestNeo = ' match (n)-[r]-(b) where id(n) = ' + nodeId + ' return n, r, b  LIMIT 80';      // ??? How to see the links between the (b) ?????
-		  console.log("request = ", requestNeo);
-		  callNeoDB(requestNeo);    	  
-    }  
-    
     function parseGraphResultData(data) {
         var nodes = {}, edges = {};
-        console.log("parseGraphResultData(: data = ", data);
         data.results[0].data.forEach(function (row) {
             row.graph.nodes.forEach(function (n) {
                 if (!nodes.hasOwnProperty(n.id)) {

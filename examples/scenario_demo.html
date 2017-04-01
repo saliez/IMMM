@@ -1,0 +1,589 @@
+<!doctype html>
+<!-- Demo page used during hacking health hackathon presentation.
+     This demo only uses the visualization library vis.js (http://visjs.org/) to simulate the application scenario -->
+<html>
+<head>
+    <title>Medical Graph</title>
+    <link rel="shortcut icon" href="images/favicon.ico"/>
+
+    <style type="text/css">
+        #mynetwork {
+            width: 100%;
+            height: 90vh;
+            border: 1px solid lightgray;
+        }
+
+        #nextDiv {
+            position: fixed;
+            bottom: 0;
+            right: 0;
+        }
+
+        #radio-dialog {
+            text-align: center;
+        }
+
+        .ui-button:focus {
+            outline: none !important
+        }
+    </style>
+
+    <link href="stylesheets/vis.min.css" rel="stylesheet" type="text/css"/>
+    <link href="stylesheets/jquery-ui.min.css" rel="stylesheet" type="text/css"/>
+<body onload="draw()">
+
+<!-- Header div containing patient data and date -->
+<div>
+    <img src="images/patient-male-32.png" style="vertical-align:middle; margin: 5px">
+    <span>Pascal MARTIN</span> <span id="date" style="float: right; font-weight: bold; margin:10px">28/11/2014</span>
+</div>
+
+<div id="mynetwork"><!-- Network will be generated here --></div>
+
+<!-- Dialog div containing radiography image displayed on click on radio node -->
+<div id="radio-dialog" title="Radiographie" style="display: none;">
+    <img src="images/radio.jpg" width="400">
+</div>
+
+<!-- Floating div displayed on the bottom right corner with next button -->
+<div id="nextDiv">
+    <button id="nextButton">Next</button>
+</div>
+
+<!-- JavaScript libraries required to run the demo -->
+<!-- vis.js is used to generate the network in a canvas in the page-->
+<script type="text/javascript" src="js_lib/vis.min.js"></script>
+
+<!-- JQuery and Jquery UI are used only to display the dialog displaying the radiography image -->
+<script type="text/javascript" src="js_lib/jquery-2.2.4.min.js"></script>
+<script type="text/javascript" src="js_lib/jquery-ui.min.js"></script>
+
+<!-- Code of the application demo -->
+<script type="text/javascript">
+
+    // Initial nodes and edges arrays of objects to display in the graph.
+    var nodesArray = [];
+    var edgesArray = [];
+
+    // Will store the vis.js network object.
+    var network = null;
+
+    var radioDialog = null;
+
+    var nodes = [];
+    var edges = [];
+
+    // Store the current step in demo, each time the next button is clicked we'll move to next step.
+    var step = 0;
+
+    var DIR = '../images/';
+
+    // Called when the Visualization API is loaded.
+    function draw() {
+        /////////////// step 1
+        nodesArray.push({
+            id: 1,
+            label: 'Toux',
+            group: "Observation"
+        });
+
+        nodesArray.push({
+            id: 2,
+            label: 'Dyspnee',
+            group: "Observation"
+        });
+
+        nodesArray.push({
+            id: 3,
+            label: 'Fumeur',
+            title: "2 paquets par jours",
+            group: "Observation"
+        });
+
+        nodesArray.push({
+            id: 4,
+            label: 'Crache du sang',
+            group: "Observation"
+        });
+
+        nodes = new vis.DataSet(nodesArray);
+        edges = new vis.DataSet(edgesArray);
+
+        radioDialog = $("#radio-dialog").dialog({
+            autoOpen: false,
+            height: 500,
+            width: 450,
+            modal: true
+        });
+
+        $("#nextButton")
+                .button()
+                .click(function (event) {
+                    event.preventDefault();
+                    next();
+                });
+    }
+
+    function next() {
+        switch (step) {
+            case 0:
+                var data = {
+                    nodes: nodes,
+                    edges: edges
+                };
+                var options = {
+
+                    layout: {randomSeed: 5},
+                    nodes: {
+                        shape: 'dot',
+                        font: {strokeWidth: 3, strokeColor: 'white'}
+                    },
+
+                    edges: {
+                        arrows: 'to'
+                    },
+                    groups: {
+                        "Observation": {
+                            color: {
+                                background: '#97c2fc',
+                                border: '#317ce0',
+                                highlight: {background: '#97c2fc', border: '#317ce0'}
+                            }
+                        },
+                        "Probleme": {
+                            color: {
+                                background: '#fb7e81',
+                                border: '#fa3d41',
+                                highlight: {background: '#fb7e81', border: '#fa3d41'}
+                            }
+                        },
+                        "Action": {
+                            color: {
+                                background: '#c2fabc',
+                                border: '#4ad63a',
+                                highlight: {background: '#c2fabc', border: '#4ad63a'}
+                            }
+                        }
+                    },
+
+                    "physics": {
+                        "barnesHut": {
+                            "springLength": 300
+                        }
+                    }
+                };
+
+                // create a network
+                var container = document.getElementById('mynetwork');
+                network = new vis.Network(container, data, options);
+
+
+                network.on("doubleClick", function (params) {
+
+                            if (params.nodes.length > 0)
+                                if (params.nodes[0] == 6) {
+                                    radioDialog.dialog("open");
+                                }
+                        }
+                );
+                break;
+
+            case 1:
+
+                nodes.add({
+                    id: 5,
+                    label: 'Pathologie\nPulmonaire',
+                    group: "Probleme"
+                });
+
+                edges.add({
+                    id: 201,
+                    from: 1,
+                    to: 5,
+                    label: "Suggere",
+                    font: {align: "top"},
+                    //value:3,
+                    arrows: 'to'
+                });
+
+                edges.add({
+                    id: 202,
+                    from: 2,
+                    to: 5,
+                    label: "Suggere",
+                    font: {align: "top"},
+                    arrows: 'to'
+                });
+
+                edges.add({
+                    id: 203,
+                    from: 3,
+                    to: 5,
+                    label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                edges.add({
+                    id: 204,
+                    from: 4,
+                    to: 5,
+                    label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                break;
+            case 2:
+
+                nodes.update([
+                    {
+                        id: 5,
+                        label: 'Pathologie\nPulmonaire',
+                        fixed: true,
+                        group: "Probleme"
+                    }
+                ]);
+
+                nodes.add({
+                    id: 6,
+                    label: 'Radio',
+                    title: 'Demande de radio',
+                    group: "Action"
+                });
+
+                edges.add({
+                    from: 5,
+                    to: 6,
+                    label: "recommande",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                break;
+            case 3:
+                nodes.update([
+                    {
+                        id: 6,
+                        label: 'Radio',
+                        title: "Radio du 03/12/2014",
+                        group: "Observation"
+                    }]);
+                $("#date").html("03/12/2014");
+
+                break;
+            case 4:
+                nodes.remove({id: 5});
+                nodes.update([
+                    {
+                        id: 6,
+                        label: 'Radio',
+                        title: "Radio du 03/12/2014",
+                        group: "Observation"
+                    }]);
+
+                nodes.add({
+                    id: 7,
+                    label: 'Cancer',
+                    group: "Probleme"
+                });
+
+                nodes.add({
+                    id: 8,
+                    label: 'Tuberculose',
+                    group: "Probleme"
+                });
+
+                edges.add({
+                    from: 1,
+                    to: 7,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 2,
+                    to: 7,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 3,
+                    to: 7,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 4,
+                    to: 7,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 6,
+                    to: 7,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                edges.add({
+                    from: 1,
+                    to: 8,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 2,
+                    to: 8,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 3,
+                    to: 8,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 4,
+                    to: 8,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 6,
+                    to: 8,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                break;
+            case 5:
+
+                nodes.update([{
+                    id: 7,
+                    label: 'Cancer',
+                    fixed: true,
+                    group: "Probleme"
+                }, {
+                    id: 8,
+                    label: 'Tuberculose',
+                    fixed: true,
+                    group: "Probleme"
+                }]);
+
+                nodes.add({
+                    id: 9,
+                    label: 'bronchoscopie',
+                    group: "Action"
+                });
+
+                edges.add({
+                    id: 100,
+                    from: 7,
+                    to: 9,
+                    //label: "Recommande",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                edges.add({
+                    id: 101,
+                    from: 8,
+                    to: 9,
+                    //label: "Recommande",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                break;
+            case 6:
+                nodes.update([{
+                    id: 9,
+                    label: 'bronchoscopie',
+                    group: "Observation"
+                }]);
+                edges.remove({id: 100});
+                edges.remove({id: 101});
+                edges.add({
+                    from: 9,
+                    to: 7,
+                    //label: "Suggere",
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                nodes.update([{
+                    id: 7,
+                    label: 'Cancer',
+                    size: 50,
+                    group: "Probleme"
+                }]);
+
+                nodes.update([{
+                    id: 8,
+                    label: 'Tuberculose',
+                    size: 8,
+                    group: "Probleme"
+                }]);
+                $("#date").html("13/12/2014");
+                break;
+            case 7:
+                nodes.update([{
+                    id: 7,
+                    label: 'Cancer',
+                    fixed: false,
+                    group: "Probleme"
+                }, {
+                    id: 8,
+                    label: 'Tuberculose',
+                    fixed: false,
+                    group: "Probleme"
+                }]);
+
+                nodes.add({
+                    id: 20,
+                    label: 'Hypertension',
+                    size: 10,
+                    group: "Probleme"
+                });
+
+                nodes.add({
+                    id: 21,
+                    label: 'Diabete',
+                    size: 15,
+                    group: "Probleme"
+                });
+
+                nodes.add({
+                    id: 22,
+                    label: 'Obesite',
+                    size: 30,
+                    group: "Probleme"
+                });
+
+                edges.add({
+                    from: 20,
+                    to: 21,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                edges.add({
+                    from: 21,
+                    to: 22,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                edges.add({
+                    from: 22,
+                    to: 20,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                nodes.add({
+                    id: 30,
+                    group: "Observation"
+                });
+
+                nodes.add({
+                    id: 31,
+                    group: "Observation"
+                });
+
+                nodes.add({
+                    id: 32,
+                    group: "Action"
+                });
+
+                nodes.add({
+                    id: 33,
+                    group: "Observation"
+                });
+
+                nodes.add({
+                    id: 34,
+                    group: "Observation"
+                });
+
+                nodes.add({
+                    id: 35,
+                    group: "Observation"
+                });
+
+                nodes.add({
+                    id: 36,
+                    group: "Observation"
+                });
+
+                // links
+                edges.add({
+                    from: 30,
+                    to: 21,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 31,
+                    to: 21,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 33,
+                    to: 21,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 33,
+                    to: 22,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 32,
+                    to: 22,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 34,
+                    to: 22,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 35,
+                    to: 20,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+                edges.add({
+                    from: 36,
+                    to: 20,
+                    arrows: 'to',
+                    font: {align: "top"}
+                });
+
+                network.stabilize();
+                var animateoptions = {
+                    duration: 1000,
+                    easingFunction: "easeInOutQuad"
+                };
+                network.fit({animation: animateoptions});
+                break;
+        }
+
+        step++;
+    }
+</script>
+</body>
+</html>
