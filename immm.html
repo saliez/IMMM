@@ -8,7 +8,7 @@
         #graph_div {
             width: 100%;
             height: 900px;
-            background-color: #F8F9FB;
+            background-color: #DDD;
             border: 1px solid lightgray;
         }
         
@@ -163,7 +163,7 @@ IMMM, "Interactive Medical Mind Maps", experimental version using <a href="https
 
 <div id="wrapper_view">             
     <div id="graph_div"></div>
-    <div id="popup_div">=== test popup_div ==============</div>
+    <div id="popup_div">=== test popup_div ==============</div> 
     <div id="edit_popup_div">=== test edit_popup_div ==============</div>
     <div id="loadingBar_view"></div>
     <div class="outerBorder">
@@ -263,15 +263,34 @@ var server = {protocol:protocolinput.value,
         var options = {
             interaction: {hover:true},
             nodes: {
-                shape: 'ellipse'
+                shape: 'ellipse',
+                color: '#DDDDFF'
             },
             edges: {
                 arrows: 'to'
             },
             groups: {
+            	Patient:{
+            		shape: 'circle',
+            		color: '#CCCCFF'
+            	},
+            	Patient_group: {
+            		shape: 'circle',
+            		color: '#BBBBEE'
+            	},
             	Observation: {
-            		shape: 'circle'
-            		},
+            		shape: 'box',
+            		color: 'yellow'
+            	},
+            	HealthIssue:{
+                   shape: 'ellipse',           	    
+            	    color: 'red'
+            	},
+            	Action:{
+            	    shape: 'box',
+            	    color: 'green'
+            	},
+            	
             }
         };
 
@@ -284,6 +303,8 @@ var server = {protocol:protocolinput.value,
             network.selectNodes([params.node],true);  // ?? is this necessary in case of single node selection ?
             var nodeId = params.node;
             var nodeToShow = data.nodes[nodeId];
+            console.log("options.interaction = ", options.interaction.hover); // error
+            console.log("hoveNode: nodeId = ", nodeId, "  nodeToShow = ", nodeToShow);
             showNodePopup(nodeToShow);
         });
         network.on("blurNode", function (params) { 
@@ -304,6 +325,7 @@ var server = {protocol:protocolinput.value,
             params.event.preventDefault();
             var nodeId = parseInt(params.nodes[0]);
             var nodeData = data.nodes[nodeId];
+            options.interaction.hover = false;   // ??? no effect
             editNodePopup(nodeData);
             params.node = [];
         });
@@ -338,6 +360,7 @@ var server = {protocol:protocolinput.value,
     function showNodePopup(node) {
         popupContainer = document.getElementById('popup_div');
         popupContainer.style.display = "block";   //  ?
+        console.log("showNodePopup: node = ", node);
         var htm = '';
         for (var key in node) {
             htm += '<i>' + key + ' : </i> ' + node[key] + "<br />";}
@@ -362,6 +385,7 @@ var server = {protocol:protocolinput.value,
         
      function clearEditNodePopup(){
         editPopupContainer.innerHTML = '';
+        //options.interaction.hover = true;  // error unkbnown here
         document.getElementById("edit_popup_div").style.display = "none";
     }
     
