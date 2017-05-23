@@ -18,8 +18,9 @@
 // ===== Global session information =====
 
 var DB_server = {protocol:"http", host:"cctos.sb04.stations.graphenedb.com", port:"24789", user:"cctos", pass:"RbV6dfFdCVnkm4KU2wyb", limit:100};
-// var DB_server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"};
-var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
+//var DB_server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"};
+
+var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
 
  // ===== Uses JQuery to post an ajax request on Neo4j REST API =====
     
@@ -39,9 +40,8 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
         });
     }
 
-    /**
-     * Function to call to display a new graph.
-     */
+// ===== Function to call to display a new graph.
+
     function callNeoDB(cypherRequest) {
         // Create the authorization header for the ajax request. 
         //DB_server.host = hostinput.value;
@@ -64,7 +64,7 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
                 }
             ]
         }).done(function (data) {
-            console.log("done");
+            //console.log("done");
             $("#loading").hide();
 
             // Parse results and convert it to vis.js compatible data.
@@ -121,27 +121,32 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
         var network = new vis.Network(container, data, options);
         
 
+        // temporary view of the content of a node when the mouse fly over this node        
         network.on("hoverNode", function (params) { 
-            // network.selectNodes([params.node],true);  // ?? is this necessary in case of single node selection ?
-            var nodeId = params.node;
+            network.selectNodes([params.node],true);  // ?? 
+            var nodeId = params.node;           // problem with nodeId
             var nodeToShow = data.nodes[nodeId];
             showNodePopup(nodeToShow);
         });
         network.on("blurNode", function (params) { 
             var nodeID = params.node;
             clearNodePopup();
+            //TestSelection = network.selection;    //
+            //network.selection = [];    // test intended to clear any previous selections
             params.node = [];
         });
+        
+        // navigate to nodes in first level relations to the current node        
         network.on("click", function(params){
             var nodeId = parseInt(params.nodes[0]);
-            clearNodePopup();
-            console.log("------------------ on click nodeId = ", nodeId);
+            clearNodePopup(); // ??? maybe a problem here since subsequent flyover have no content anymore ???
             if (nodeId) {
                 navigate(nodeId);
             };
         });
         
-        network.on("oncontext", function(params){
+        // Create a persitent popup, persitent until saved or cancelled        
+        network.on("oncontext", function(params){   // context means here the right mouse button
             params.event.preventDefault();
             var nodeId = parseInt(params.nodes[0]);
             var nodeData = data.nodes[nodeId];
@@ -177,12 +182,12 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
             });
     }
      
-    function showNodePopup(node) {
+    function showNodePopup(nodeToShow) {
         popupContainer = document.getElementById('popup_div');
         popupContainer.style.display = "block";   //  ?
         var htm = '';
-        for (var key in node) {
-            htm += '<i>' + key + ' : </i> ' + node[key] + "<br />";}
+        for (var key in nodeToShow) {
+            htm += '<i>' + key + ' : </i> ' + nodeToShow[key] + "<br />";}
         popupContainer.innerHTML = htm;
     }
     
@@ -197,8 +202,9 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
         editPopupContainer.style.display = "block";   //  ?
         var htm = '<h2>Edit Node</h2>';
         for (var key in nodeData) {
-            htm += '<i>' + key + ' : </i> ' + nodeData[key] + "<br />";};
-        htm += "<br /><button onclick='clearEditNodePopup()'> Cancel </button> --- Save(to be installed)";
+            htm += "<i>" + key + " : </i> " + nodeData[key] + "<br />";};
+        htm += "<br /><button onclick='clearEditNodePopup()'> Cancel </button>";
+        htm += "--- <button onclick='clearEditNodePopup()'> Save </button>";
         editPopupContainer.innerHTML = htm;
         }        
         
@@ -216,9 +222,8 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
 		  callNeoDB(requestNeo);    	  
     }  
     
-    function parseGraphResultData(data) {
+    function parseGraphResultData(data) {              // called from callNeoDB ..... ?
         var nodes = {}, edges = {};
-        console.log("parseGraphResultData(: data = ", data);
         data.results[0].data.forEach(function (row) {
             row.graph.nodes.forEach(function (n) {
                 if (!nodes.hasOwnProperty(n.id)) {
@@ -250,7 +255,7 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
         return {nodes: nodesArray, edges: edgesArray};
     }
 
-    function convertNodes(nodes) {
+    function convertNodes(nodes) {       // called from callNeoDB ..... ?
         var convertedNodes = [];
 
         nodes.forEach(function (node) {
@@ -266,7 +271,7 @@ var defaultCypherRequest = "match (n),()-[r]-() return n, r limit 100";
         return convertedNodes;
     }
 
-    function convertEdges(edges) {
+    function convertEdges(edges) {      // called from callNeoDB ..... ?
         var convertedEdges = [];
 
         edges.forEach(function (edge) {
