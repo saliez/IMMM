@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>IMMM</title>
-
+<!-- branch dev -->
 
 <!-- ===== Required resources -->
 <script src="js_lib/jquery-2.2.4.min.js" charset="utf-8"></script>
@@ -14,6 +14,8 @@
 
 
 <script>
+
+//"use strict";  //if strict, a problem with AUTHORISATION   ???
 
 // ===== Global session information =====
 
@@ -202,12 +204,20 @@ var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
         editPopupContainer.style.display = "block";   //  ?
         var htm = '<h2>Edit Node</h2>';
         for (var key in nodeData) {
-            htm += "<i>" + key + " : </i> " + nodeData[key] + "<br />";};
+            htm += "<i>" + key + " : </i> ";
+            //htm += nodeData[key] + "<br />";
+            htm += document.setElementById(key).value = nodeData[key];
+        };
         htm += "<br /><button onclick='clearEditNodePopup()'> Cancel </button>";
-        htm += "--- <button onclick='clearEditNodePopup()'> Save </button>";
+        htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
         }        
-        
+     
+     function saveEditedNode()   {
+     alert ("( TEST : node to be saved here)");
+     clearEditNodePopup();
+     }
+     
      function clearEditNodePopup(){
         editPopupContainer.innerHTML = '';
         //options.interaction.hover = true;  // error unkbnown here
