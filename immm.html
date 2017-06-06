@@ -23,6 +23,9 @@ var DB_server = {protocol:"http", host:"cctos.sb04.stations.graphenedb.com", por
 //var DB_server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"};
 
 var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
+var editScreenLocked = false;
+var currentNetworkRequest = "";
+
 
  // ===== Uses JQuery to post an ajax request on Neo4j REST API =====
     
@@ -44,10 +47,10 @@ var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
 
 // ===== Function to call to display a new graph.
 
-    function callNeoDB(cypherRequest) {
+    function callNeoDB(updateCypher) {
         // Create the authorization header for the ajax request. 
         //DB_server.host = hostinput.value;
-        var test = cypherRequest;        
+        var test = updateCypher;        
         AUTHORIZATION = "Basic " + btoa(DB_server.user + ":" + DB_server.pass);
         console.log("AUTHORIZATION = ", AUTHORIZATION);
         // Show loading elements.
@@ -61,7 +64,7 @@ var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
             "statements": [
                 {
                     //"statement": "match (n),()-[r]-() return n,r",
-                    "statement": cypherRequest, 
+                    "statement": updateCypher, 
                     "resultDataContents": ["graph"]
                 }
             ]
@@ -77,7 +80,8 @@ var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
                 nodes: nodes,
                 edges: edges
             };
-
+            
+            currentNetworkRequest = updateCypher;
             displayVisJsData(visData);
         });
     }
@@ -153,8 +157,10 @@ var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
             var nodeId = parseInt(params.nodes[0]);
             var nodeData = data.nodes[nodeId];
             options.interaction.hover = false;   // ??? no effect
-            editNodePopup(nodeData);
-            params.node = [];
+            if (!editScreenLocked){
+               editNodePopup(nodeData);
+               params.node = [];
+            }
         });
         
         network.once("stabilizationIterationsDone", function () {    // objective ???  the first time ???
@@ -187,9 +193,10 @@ var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
     function showNodePopup(nodeToShow) {
         popupContainer = document.getElementById('popup_div');
         popupContainer.style.display = "block";   //  ?
-        var htm = '';
+        var htm = '<table>';
         for (var key in nodeToShow) {
-            htm += '<i>' + key + ' : </i> ' + nodeToShow[key] + "<br />";}
+            htm += '<tr><td><i>' + key + ': </i> </td><td>' + nodeToShow[key] + "</td></tr>";}
+        htm += "</table>";
         popupContainer.innerHTML = htm;
     }
     
@@ -202,34 +209,71 @@ var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
         clearNodePopup();       
         editPopupContainer = document.getElementById('edit_popup_div');
         editPopupContainer.style.display = "block";   //  ?
+        editScreenLocked = true;
         var htm = '<h2>Edit Node</h2>';
+        htm += "<table>";      
         for (var key in nodeData) {
-            htm += "<i>" + key + " : </i> ";
+            htm += "<tr>";
+            htm += '<td><i>' + key + ' </i> </td>';
+            htm += `<td><input class="node_data" id=${key}  value=${nodeData[key]} /></td>`;
+            htm += "</tr>";
             //htm += nodeData[key] + "<br />";
-            htm += document.setElementById(key).value = nodeData[key];
+            //document.getElementById(key).value = nodeData[key];
         };
+        htm += "</table>";
         htm += "<br /><button onclick='clearEditNodePopup()'> Cancel </button>";
         htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
         }        
      
      function saveEditedNode()   {
-     alert ("( TEST : node to be saved here)");
-     clearEditNodePopup();
+        var data = document.getElementsByClassName("node_data")
+        var updateCypher ="MATCH  ........"  // How to identify the node from a Neo4j point of view ???
+        for (var key in data) {
+     	     console.log(data[key]);
+     	     //data[key] = document.getElementById("label").value;
+        }
+        updateCypher += "RETURN ...";
+              /* Considered Neo4j alternatives:
+                  Problem :
+                     When a VIS.JS node has been updated howto update the corresponding NEO4J node.
+                     And the same for attributes of a relation.
+                  MAP ?
+                     Create a map of the attributes and do a MERGE of the node
+                  LIST
+                     Creata a list ....
+                  FOREACH ?
+                     FOREACH(k in node)| SET ......)
+                  MATCH ?
+                     Repeat the same selection as in the original request, but no certitude to retrieve
+                     the original node and only one node.                  
+                  Internal id function in Neo4j ?
+                     Record the Neo4j internal id as an attribute inside the VIS.JS network: "id(node)"
+                     Having a unique ID it would then become easy to update  well identified node or relation.
+                  .....
+              */
+        //alert ("( TEST : node to be saved here)" + label);
+        clearEditNodePopup();
+        editScreenLocked = false;
+        //callNeoDB(updateCypher);
+        //callNeoDB(currentNetworkRequest);  // a complete reset of the current network should not be necessary !
+        
      }
      
      function clearEditNodePopup(){
         editPopupContainer.innerHTML = '';
         //options.interaction.hover = true;  // error unkbnown here
         document.getElementById("edit_popup_div").style.display = "none";
+        editScreenLocked = false;
     }
     
     
     function navigate(nodeId)  {
-    	  console.log("xxxxxx naviguate from nodeId = ", nodeId);
-    	  var requestNeo = ' match (n)-[r]-(b) where id(n) = ' + nodeId + ' return n, r, b  LIMIT 80';      // ??? How to see also the links between the (b) ?????
-		  console.log("request = ", requestNeo);
-		  callNeoDB(requestNeo);    	  
+    	  if (!editScreenLocked) {console.log("xxxxxx naviguate from nodeId = ", nodeId);
+    	     var requestNeo = ' match (n)-[r]-(b) where id(n) = ' + nodeId + ' return n, r, b  LIMIT 80';      // ??? How to see also the links between the (b) ?????
+		     console.log("request = ", requestNeo);
+		     callNeoDB(requestNeo);  
+		  }  	  
     }  
     
     function parseGraphResultData(data) {              // called from callNeoDB ..... ?
