@@ -131,9 +131,16 @@ var currentNetworkRequest = "";
         network.on("hoverNode", function (params) { 
             network.selectNodes([params.node],true);  // ?? 
             var nodeId = params.node;           // problem with nodeId
-            var nodeToShow = data.nodes[nodeId];
+            //var nodeToShow = data.nodes[nodeId];
+            // the filter function called on nodes data will return an array of nodes where node.id === nodeID
+            // as there will be only one node first node of the returned array is returned as nodeToShow
+            var nodeToShow = data.nodes.filter(function (node) {
+               return node.id === nodeId;
+               })[0];   
             showNodePopup(nodeToShow);
+            
         });
+        
         network.on("blurNode", function (params) { 
             var nodeID = params.node;
             clearNodePopup();
@@ -203,6 +210,7 @@ var currentNetworkRequest = "";
     function clearNodePopup(){
         //popupContainer.innerHTML = '';
         document.getElementById("popup_div").style.display = "none";
+        //alert("clearEditNodePopup");)
     }
 
     function editNodePopup(nodeData) {
@@ -215,7 +223,16 @@ var currentNetworkRequest = "";
         for (var key in nodeData) {
             htm += "<tr>";
             htm += '<td><i>' + key + ' </i> </td>';
-            htm += `<td><input class="node_data" id=${key}  value=${nodeData[key]} /></td>`;
+            htm += "<td>";
+            //htm += nodeData[key];   // old value well shown, but not editable
+            //var field = document.createTextNode(key);
+            //document.getElementById(editPopupContainer).appendChild(field);
+            //document.getElementById(field).value = nodeData[key];
+            //htm += document.getElementById(key).value ;
+            htm += `<input class='node_data' id=${key}  value='${nodeData[key]}' width='400'/>`;
+            oldValue = nodeData[key];
+            //htm += "<input class='node_data' id=${key}  value= '${oldValue}' />";
+            htm += "</td>";
             htm += "</tr>";
             //htm += nodeData[key] + "<br />";
             //document.getElementById(key).value = nodeData[key];
@@ -227,37 +244,40 @@ var currentNetworkRequest = "";
         }        
      
      function saveEditedNode()   {
-        var data = document.getElementsByClassName("node_data")
+     console.log("oupi")
+
+       var data = document.getElementsByClassName("node_data")  
+       for (let i; i < 3 ; i++) {
+           console.log(data[i].value)
+       };
+          /*
+          var dataList = [];
+          for k in data {
+             dataList += data[k].value;
+          }
+          alert("Save Test: dataList = ", dataList);
+          */
+     	
+
         var updateCypher ="MATCH  ........"  // How to identify the node from a Neo4j point of view ???
-        for (var key in data) {
-     	     console.log(data[key]);
-     	     //data[key] = document.getElementById("label").value;
-        }
+        
         updateCypher += "RETURN ...";
-              /* Considered Neo4j alternatives:
+              /* 
                   Problem :
                      When a VIS.JS node has been updated howto update the corresponding NEO4J node.
                      And the same for attributes of a relation.
-                  MAP ?
-                     Create a map of the attributes and do a MERGE of the node
-                  LIST
-                     Creata a list ....
-                  FOREACH ?
-                     FOREACH(k in node)| SET ......)
-                  MATCH ?
-                     Repeat the same selection as in the original request, but no certitude to retrieve
-                     the original node and only one node.                  
-                  Internal id function in Neo4j ?
-                     Record the Neo4j internal id as an attribute inside the VIS.JS network: "id(node)"
-                     Having a unique ID it would then become easy to update  well identified node or relation.
-                  .....
+                     In one way or another a reliable identification is necessary 
+                     for the synchronisation between VIS.JS and NEO4J.
+                  Considered solutions:
+                     - Using the id() function of NEO4J ?
+                     - using an identification to be created in the application, e.g. something like 
+                       " author + timestamps " ?
               */
         //alert ("( TEST : node to be saved here)" + label);
         clearEditNodePopup();
         editScreenLocked = false;
         //callNeoDB(updateCypher);
         //callNeoDB(currentNetworkRequest);  // a complete reset of the current network should not be necessary !
-        
      }
      
      function clearEditNodePopup(){
@@ -342,7 +362,7 @@ var currentNetworkRequest = "";
 </script>
 
 </head>
-//<body onload="callNeoDB('match (n),()-[r]-() return n,r limit 100');" style="background-color:#cccccc">
+<!--<body onload="callNeoDB('match (n),()-[r]-() return n,r limit 100');" style="background-color:#cccccc"> -->
 <body onload="callNeoDB(defaultCypherRequest);" style="background-color:#cccccc">
 
 
@@ -358,8 +378,8 @@ var currentNetworkRequest = "";
 
 <div id="wrapper_view">             
     <div id="graph_div"></div>
-    <div id="popup_div">=== test popup_div ==============</div> 
-    <div id="edit_popup_div">=== test edit_popup_div ==============</div>
+    <div id="popup_div">=== test popup_div</div> 
+    <div id="edit_popup_div">=== test edit_popup_div </div>
     <div id="loadingBar_view"></div>
     <div class="outerBorder">
             <div id="text">0%</div>

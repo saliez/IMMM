@@ -22,11 +22,11 @@
          #edit_popup_div {
             display:none;
             position:absolute;
-            top:300px;
-            left:200px;
+            top:100px;
+            left:100px;
             z-index:299;
-            width:400px;
-            height:400px;
+            width:500px;
+            height:600px;
             background-color: #f9f9f9;
             border-style:solid;
             border-width:8px;
