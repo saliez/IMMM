@@ -134,11 +134,8 @@ var currentNetworkRequest = "";
             //var nodeToShow = data.nodes[nodeId];
             // the filter function called on nodes data will return an array of nodes where node.id === nodeID
             // as there will be only one node first node of the returned array is returned as nodeToShow
-            var nodeToShow = data.nodes.filter(function (node) {
-               return node.id === nodeId;
-               })[0];   
+            var nodeToShow = data.nodes.filter(function (node) {return node.id === nodeId;})[0];   
             showNodePopup(nodeToShow);
-            
         });
         
         network.on("blurNode", function (params) { 
@@ -158,10 +155,11 @@ var currentNetworkRequest = "";
             };
         });
         
-        // Create a persitent popup, persitent until saved or cancelled        
-        network.on("oncontext", function(params){   // context means here the right mouse button
+        // Create a persitent popup, persitent until saved or cancelled, by means of a right mouse click     
+        network.on("oncontext", function(params){   // "context" means here the right mouse button
             params.event.preventDefault();
             var nodeId = parseInt(params.nodes[0]);
+            //var nodeData = data.nodes.filter(function (node) {return node.id === nodeId;})[0];   
             var nodeData = data.nodes[nodeId];
             options.interaction.hover = false;   // ??? no effect
             if (!editScreenLocked){
@@ -229,9 +227,7 @@ var currentNetworkRequest = "";
             //document.getElementById(editPopupContainer).appendChild(field);
             //document.getElementById(field).value = nodeData[key];
             //htm += document.getElementById(key).value ;
-            htm += `<input class='node_data' id=${key}  value='${nodeData[key]}' width='400'/>`;
-            oldValue = nodeData[key];
-            //htm += "<input class='node_data' id=${key}  value= '${oldValue}' />";
+            htm += `<input class='node_data' id=${key}  value='${nodeData[key]}' width='500'/>`;
             htm += "</td>";
             htm += "</tr>";
             //htm += nodeData[key] + "<br />";
@@ -244,40 +240,29 @@ var currentNetworkRequest = "";
         }        
      
      function saveEditedNode()   {
-     console.log("oupi")
+     //console.log("oupi")
 
-       var data = document.getElementsByClassName("node_data")  
-       for (let i; i < 3 ; i++) {
+        var data = document.getElementsByClassName("node_data");
+        //var data = map(document.getElementsByClassName("node_data"));
+        var dataLength = data.length;
+        var i = 0;
+        for (i; i < dataLength; i++) {
            console.log(data[i].value)
-       };
-          /*
-          var dataList = [];
-          for k in data {
-             dataList += data[k].value;
-          }
-          alert("Save Test: dataList = ", dataList);
-          */
-     	
+           dataItem = data.item(i);
+           alert("dataItem = ", dataItem);
+        };
 
-        var updateCypher ="MATCH  ........"  // How to identify the node from a Neo4j point of view ???
-        
-        updateCypher += "RETURN ...";
-              /* 
-                  Problem :
-                     When a VIS.JS node has been updated howto update the corresponding NEO4J node.
-                     And the same for attributes of a relation.
-                     In one way or another a reliable identification is necessary 
-                     for the synchronisation between VIS.JS and NEO4J.
-                  Considered solutions:
-                     - Using the id() function of NEO4J ?
-                     - using an identification to be created in the application, e.g. something like 
-                       " author + timestamps " ?
-              */
-        //alert ("( TEST : node to be saved here)" + label);
+        var neoRequest = "MATCH ..... " ;   // node identification from a Neo4j point of view ???
+        var keys = data.key;
+        for (key in keys) {
+           neoRequest += "SET " + key + "=" + data.get(key) + ", ";
+        }
+        neoRequest += "RETURN";
+        alert("neoRequest = " + neoRequest)        
+        //callNeoDB(neoRequest);  // a complete reset of the current network should not be necessary !
         clearEditNodePopup();
         editScreenLocked = false;
-        //callNeoDB(updateCypher);
-        //callNeoDB(currentNetworkRequest);  // a complete reset of the current network should not be necessary !
+        
      }
      
      function clearEditNodePopup(){
