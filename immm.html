@@ -159,8 +159,8 @@ var currentNetworkRequest = "";
         network.on("oncontext", function(params){   // "context" means here the right mouse button
             params.event.preventDefault();
             var nodeId = parseInt(params.nodes[0]);
+            var nodeData = data.nodes[nodeId];   // Problem: identification errors after navigation
             //var nodeData = data.nodes.filter(function (node) {return node.id === nodeId;})[0];   
-            var nodeData = data.nodes[nodeId];
             options.interaction.hover = false;   // ??? no effect
             if (!editScreenLocked){
                editNodePopup(nodeData);
@@ -227,7 +227,8 @@ var currentNetworkRequest = "";
             //document.getElementById(editPopupContainer).appendChild(field);
             //document.getElementById(field).value = nodeData[key];
             //htm += document.getElementById(key).value ;
-            htm += `<input class='node_data' id=${key}  value='${nodeData[key]}' width='500'/>`;
+            
+            htm += `<input class='node_data' id=${key}  name=${key} value='${nodeData[key]}' width='500'/>`;
             htm += "</td>";
             htm += "</tr>";
             //htm += nodeData[key] + "<br />";
@@ -235,31 +236,32 @@ var currentNetworkRequest = "";
         };
         htm += "</table>";
         htm += "<br /><button onclick='clearEditNodePopup()'> Cancel </button>";
+        //htm += " --- <button onclick='saveEditedNode(nodeData)'> Save</button>";
         htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
         }        
      
-     function saveEditedNode()   {
-     //console.log("oupi")
-
-        var data = document.getElementsByClassName("node_data");
+     function saveEditedNode()  {
+     //console.log("saveEditNode")
+        var data = document.getElementsByClassName("node_data");  // provide anHTMLCollection, an iterable but with restrictions
+                                                                  // no map, no for in
         //var data = map(document.getElementsByClassName("node_data"));
-        var dataLength = data.length;
-        var i = 0;
-        for (i; i < dataLength; i++) {
-           console.log(data[i].value)
-           dataItem = data.item(i);
-           alert("dataItem = ", dataItem);
+        var currentNodeId = data.id.value;
+        var neoRequest = "MATCH (n) WHERE n.id = " + currentNodeId ;   // node identification from a Neo4j point of view ???
+        var i = 1;
+        var dataItem
+        var dataFieldName = "";
+        for (i; i < data.length; i++) {
+           //dataFieldName = data.item[i].name; // problem = how to retrieve the key ??????
+           //dataFieldName = data.querySelector('input').value;   // error  
+           dataFieldName = "(dataFieldName)";   // provisoinal test        
+           dataItem = data.item(i).value;
+           console.log("dataFieldName = ", dataFieldName, "   dataItem = ", dataItem.toString());
+           neoRequest += " SET n." + dataFieldName + " = {" + dataItem + "}, ";
         };
-
-        var neoRequest = "MATCH ..... " ;   // node identification from a Neo4j point of view ???
-        var keys = data.key;
-        for (key in keys) {
-           neoRequest += "SET " + key + "=" + data.get(key) + ", ";
-        }
         neoRequest += "RETURN";
-        alert("neoRequest = " + neoRequest)        
-        //callNeoDB(neoRequest);  // a complete reset of the current network should not be necessary !
+        alert("Test neoRequest = " + neoRequest)        
+        //callNeoDB(neoRequest);  // will work but a complete reset of the current network should not be necessary !
         clearEditNodePopup();
         editScreenLocked = false;
         
