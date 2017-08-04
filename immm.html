@@ -22,9 +22,11 @@
 var DB_server = {protocol:"http", host:"cctos.sb04.stations.graphenedb.com", port:"24789", user:"cctos", pass:"RbV6dfFdCVnkm4KU2wyb", limit:100};
 //var DB_server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"};
 
-var defaultCypherRequest = "match (n),(n)-[r]-() return n, r limit 100";
+var defaultNeoRequest = "match (n),(n)-[r]-() return n, r limit 100";
+var currentCypherRequest = defaultNeoRequest;
 var editScreenLocked = false;
 var currentNetworkRequest = "";
+var visData = {};
 
 
  // ===== Uses JQuery to post an ajax request on Neo4j REST API =====
@@ -63,20 +65,20 @@ var currentNetworkRequest = "";
         restPost({
             "statements": [
                 {
-                    //"statement": "match (n),()-[r]-() return n,r",
                     "statement": updateCypher, 
                     "resultDataContents": ["graph"]
                 }
             ]
         }).done(function (data) {
-            //console.log("done");
+            //console.log("callNeoDB done");
             $("#loading").hide();
+            $("#loadingBar_view").hide(); // not working, the loadingBar persist ???
 
             // Parse results and convert it to vis.js compatible data.
             var graphData = parseGraphResultData(data);
             var nodes = convertNodes(graphData.nodes);
             var edges = convertEdges(graphData.edges);
-            var visData = {
+            visData = {
                 nodes: nodes,
                 edges: edges
             };
@@ -123,8 +125,13 @@ var currentNetworkRequest = "";
             }
         };
 
-        // initialize the network!
+        // initialize the network! with Ids from the VIS point of view
         var network = new vis.Network(container, data, options);
+        
+        // TEST any event but not effect ???
+        network.on("*", function(event, properties, senderId) {
+            console.log("TEST any event, event= ", event, "   properties = ", properties);
+        });
         
 
         // temporary view of the content of a node when the mouse fly over this node        
@@ -133,33 +140,66 @@ var currentNetworkRequest = "";
             var nodeId = params.node;           // problem with nodeId
             //var nodeToShow = data.nodes[nodeId];
             // the filter function called on nodes data will return an array of nodes where node.id === nodeID
-            // as there will be only one node first node of the returned array is returned as nodeToShow
+            // as there will be in principle only one node, first node of the returned array is returned as nodeToShow
             var nodeToShow = data.nodes.filter(function (node) {return node.id === nodeId;})[0];   
             showNodePopup(nodeToShow);
         });
         
         network.on("blurNode", function (params) { 
             var nodeID = params.node;
-            clearNodePopup();
+            clearViewPopup();
             //TestSelection = network.selection;    //
             //network.selection = [];    // test intended to clear any previous selections
-            params.node = [];
+            //params.node = [];
+        });
+        
+ 
+         // temporary view of the content of an edge when the mouse fly over this edge       
+        network.on("hoverEdge", function (params) { 
+            network.selectEdges([params.edge],true);  // ?? 
+            var edgeId = params.edge;           // problem with edgeId
+            //var nodeToShow = data.nodes[nodeId];
+            // the filter function called on edges data will return an array of edges where edge.id === edgeID
+            // as there will be in principle only one edge, first edge of the returned array is returned as edgeToShow
+            var edgeToShow = data.edges.filter(function (edge) {return edge.id === edgeId;})[0];   
+            showEdgePopup(edgeToShow);
+        });
+        
+        network.on("blurEdge", function (params) { 
+            var nodeID = params.edge;
+            clearViewPopup();
+            //TestSelection = network.selection;    //
+            //network.selection = [];    // test intended to clear any previous selections
+            //params.edge = [];
         });
         
         // navigate to nodes in first level relations to the current node        
         network.on("click", function(params){
             var nodeId = parseInt(params.nodes[0]);
-            clearNodePopup(); // ??? maybe a problem here since subsequent flyover have no content anymore ???
+            clearViewPopup(); // ??? maybe a problem here since subsequent flyover have no content anymore ???
             if (nodeId) {
                 navigate(nodeId);
             };
         });
         
-        // Create a persitent popup, persitent until saved or cancelled, by means of a right mouse click     
+        // Create a persitent node popup, persitent until saved or cancelled, by means of a right mouse click     
         network.on("oncontext", function(params){   // "context" means here the right mouse button
             params.event.preventDefault();
             var nodeId = parseInt(params.nodes[0]);
             var nodeData = data.nodes[nodeId];   // Problem: identification errors after navigation
+            //var nodeData = data.nodes.filter(function (node) {return node.id === nodeId;})[0];   
+            options.interaction.hover = false;   // ??? no effect
+            if (!editScreenLocked){
+               editNodePopup(nodeData);
+               params.node = [];
+            }
+        });
+
+        // Create a persitent relation popup, persitent until saved or cancelled, by means of a right mouse click     
+        network.on("oncontext", function(params){   // "context" means here the right mouse button
+            params.event.preventDefault();
+            var edgeId = parseInt(params.edges[0]);
+            var edgeData = data.edges[edgeId];   // Problem: identification errors after navigation
             //var nodeData = data.nodes.filter(function (node) {return node.id === nodeId;})[0];   
             options.interaction.hover = false;   // ??? no effect
             if (!editScreenLocked){
@@ -205,18 +245,26 @@ var currentNetworkRequest = "";
         popupContainer.innerHTML = htm;
     }
     
-    function clearNodePopup(){
-        //popupContainer.innerHTML = '';
-        document.getElementById("popup_div").style.display = "none";
-        //alert("clearEditNodePopup");)
-    }
 
+    function showEdgePopup(edgeToShow) {
+        popupContainer = document.getElementById('popup_div');
+        popupContainer.style.display = "block";   //  ?
+        var htm = '<table>';
+        
+        for (var key in edgeToShow) {
+            htm += '<tr><td><i>' + key + ': </i> </td><td>' + edgeToShow[key] + "</td></tr>";}
+        
+        htm += "</table>";
+        popupContainer.innerHTML = htm;
+    }
+    
+    
     function editNodePopup(nodeData) {
-        clearNodePopup();       
+        clearViewPopup();       
         editPopupContainer = document.getElementById('edit_popup_div');
         editPopupContainer.style.display = "block";   //  ?
         editScreenLocked = true;
-        var htm = '<h2>Edit Node</h2>';
+        var htm = '<h2>Edit Nodes:</h2>';
         htm += "<table>";      
         for (var key in nodeData) {
             htm += "<tr>";
@@ -235,60 +283,91 @@ var currentNetworkRequest = "";
             //document.getElementById(key).value = nodeData[key];
         };
         htm += "</table>";
-        htm += "<br /><button onclick='clearEditNodePopup()'> Cancel </button>";
+        htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
         //htm += " --- <button onclick='saveEditedNode(nodeData)'> Save</button>";
         htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
         }        
      
+    function editEdgePopup(edgeData) {
+        clearViewPopup();       
+        editPopupContainer = document.getElementById('edit_popup_div');
+        editPopupContainer.style.display = "block";   //  ?
+        editScreenLocked = true;
+        var htm = '<h2>Edit Relations/h2>';
+        htm += "<table>";      
+        for (var key in edgeData) {
+            htm += "<tr>";
+            htm += '<td><i>' + key + ' </i> </td>';
+            htm += "<td>";
+            htm += `<input class='node_data' id=${key}  name=${key} value='${edgeData[key]}' width='500'/>`;
+            htm += "</td>";
+            htm += "</tr>";
+        };
+        htm += "</table>";
+        htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
+        //htm += " --- <button onclick='saveEditedNode(edgeData)'> Save</button>";
+        htm += " --- <button onclick=  clearEditPopup  /* 'saveEditedEdge()' */ > Save</button>";
+        editPopupContainer.innerHTML = htm;
+        }   
+             
      function saveEditedNode()  {
      //console.log("saveEditNode")
         var data = document.getElementsByClassName("node_data");  // provide anHTMLCollection, an iterable but with restrictions
                                                                   // no map, no for in
         //var data = map(document.getElementsByClassName("node_data"));
         var currentNodeId = data.id.value;
-        var neoRequest = "MATCH (n) WHERE n.id = " + currentNodeId ;   // node identification from a Neo4j point of view ???
+        var neoRequest = "MATCH (n) WHERE id(n) = " + currentNodeId ;   // node identification from a Neo4j point of view ???
         var i = 1;
-        var dataItem
-        var dataFieldName = "";
-        for (i; i < data.length; i++) {
-           //dataFieldName = data.item[i].name; // problem = how to retrieve the key ??????
-           //dataFieldName = data.querySelector('input').value;   // error  
-           dataFieldName = "(dataFieldName)";   // provisoinal test        
-           dataItem = data.item(i).value;
-           console.log("dataFieldName = ", dataFieldName, "   dataItem = ", dataItem.toString());
-           neoRequest += " SET n." + dataFieldName + " = {" + dataItem + "}, ";
+        var dataFieldName = "TEST_fieldName";
+        var dataValue = "..................";
+        var dataArr = Array.from(data);        
+        for (i; i < dataArr.length; i++) {
+           dataFieldName = dataArr[i].attributes.name.value;  
+           dataValue = dataArr[i].value;      
+           console.log(" dataValue = ", dataValue.toString());
+           //neoRequest += " SET n." + dataFieldName + " = {" + dataValue + "} ";
+           neoRequest += " SET n." + dataFieldName + " = " + dataValue ;
         };
-        neoRequest += "RETURN";
-        alert("Test neoRequest = " + neoRequest)        
+        
+        neoRequest += ", match (node),()-[r]-() return node,r limit 100";
+        alert("neoRequest = " + neoRequest);      
         //callNeoDB(neoRequest);  // will work but a complete reset of the current network should not be necessary !
-        clearEditNodePopup();
+        clearEditPopup();
         editScreenLocked = false;
         
      }
      
-     function clearEditNodePopup(){
-        editPopupContainer.innerHTML = '';
+     function clearEditPopup(){
+        console.log("clearEditPopup");
+        //editPopupContainer.innerHTML = '';
         //options.interaction.hover = true;  // error unkbnown here
         document.getElementById("edit_popup_div").style.display = "none";
         editScreenLocked = false;
     }
-    
+   
+    function clearViewPopup(){
+        //popupContainer.innerHTML = '';
+        document.getElementById("popup_div").style.display = "none";
+    }
+
     
     function navigate(nodeId)  {
-    	  if (!editScreenLocked) {console.log("xxxxxx naviguate from nodeId = ", nodeId);
-    	     var requestNeo = ' match (n)-[r]-(b) where id(n) = ' + nodeId + ' return n, r, b  LIMIT 80';      // ??? How to see also the links between the (b) ?????
-		     console.log("request = ", requestNeo);
-		     callNeoDB(requestNeo);  
+    	  if (!editScreenLocked) {
+    	     console.log("xxxxxx naviguate from nodeId = ", nodeId);
+    	     currentNeoRequest = ' match (n)-[r]-(b) where id(n) = ' + nodeId + ' return n, r, b  LIMIT 80';      // ??? How to see also the links between the (b) ?????
+		     console.log("currentNeoRequest = ", currentNeoRequest);
+		     callNeoDB(currentNeoRequest);  
+		     displayVisJsData(visData);
 		  }  	  
     }  
     
     function parseGraphResultData(data) {              // called from callNeoDB ..... ?
         var nodes = {}, edges = {};
-        data.results[0].data.forEach(function (row) {
+        data.results[0].data.forEach(function (row) {      // ( ???? error after an update )
             row.graph.nodes.forEach(function (n) {
                 if (!nodes.hasOwnProperty(n.id)) {
-                    nodes[n.id] = n;
+                    nodes[n.id] = n;                 // creation of a vis.js identification
                 }
             });
 
@@ -316,30 +395,41 @@ var currentNetworkRequest = "";
         return {nodes: nodesArray, edges: edgesArray};
     }
 
-    function convertNodes(nodes) {       // called from callNeoDB ..... ?
+    function convertNodes(nodes) {       // why a conversion ?
         var convertedNodes = [];
 
         nodes.forEach(function (node) {
             var nodeLabel = node.labels[0];
             var displayedLabel = nodeLabel + ("\n" + node.properties[Object.keys(node.properties)[0]]).substr(0, 20);
+            var authorValue = "unknown";
+            var certaintyValue = "unknown";         //node.properties.certainty;
+            var importanceValue = "unknown";        //node.properties.importance;
             convertedNodes.push({
                 id: node.id,
+                author: authorValue,
                 label: displayedLabel,
-                group: nodeLabel
+                group: nodeLabel,
+                certainty: certaintyValue,
+                importance: importanceValue
             })
         });
 
         return convertedNodes;
     }
 
-    function convertEdges(edges) {      // called from callNeoDB ..... ?
+    function convertEdges(edges) {
         var convertedEdges = [];
-
         edges.forEach(function (edge) {
+            var authorValue = "unknown";            
+            var certaintyValue = "unknown";      //edges.properties.certainty;
+            var importanceValue = "unknown";     //edges.properties.importance;
             convertedEdges.push({
                 from: edge.startNode,
                 to: edge.endNode,
-                label: edge.type
+                label: edge.type,
+                author: authorValue,
+                certainty: certaintyValue,
+                importance: importanceValue
             })
         });
 
@@ -350,11 +440,11 @@ var currentNetworkRequest = "";
 
 </head>
 <!--<body onload="callNeoDB('match (n),()-[r]-() return n,r limit 100');" style="background-color:#cccccc"> -->
-<body onload="callNeoDB(defaultCypherRequest);" style="background-color:#cccccc">
+<body onload="callNeoDB(currentCypherRequest);" style="background-color:#cccccc">
 
 
 <label>
-   Test request: <input id="dbRequest" type="textarea" size="160" value="..........">
+   Test Neo4j request: <input id="dbRequest" type="textarea" size="160" value="">
 </label>
 
 <label>
