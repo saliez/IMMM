@@ -20,15 +20,15 @@
 // ===== Global session information =====
 
 console.log("=========== Start immm.html script ===============================");
-var DB_server = {protocol:"http", host:"cctos.sb04.stations.graphenedb.com", port:"24789", user:"cctos", pass:"RbV6dfFdCVnkm4KU2wyb", limit:100};
 //var DB_server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"};
+var DB_server = {protocol:"http", host:"hobby-bikhkgaajbbfgbkeagpchfpl.dbs.graphenedb.com", port:"24789", user:"immm32", pass:"b.VpYQSs7CRWpf.QTCJmz2Lh0EDrm7q", limit:100};
+
 
 var defaultNeoRequest = "match (n),(n)-[r]-() return n, r limit 100";
 var currentSelectionNeoRequest = defaultNeoRequest;
 var editScreenLocked = false;
 var currentNetworkRequest = "";
-
-//var visData = {};
+var visData = {};
 
 
  // ===== Uses JQuery to post an ajax request on Neo4j REST API =====
@@ -57,12 +57,6 @@ var currentNetworkRequest = "";
         var test = updateCypher;        
         AUTHORIZATION = "Basic " + btoa(DB_server.user + ":" + DB_server.pass);
         console.log("AUTHORIZATION = ", AUTHORIZATION);
-        // Show loading elements.
-        //$("#loading").show();
-        //$("#loadingBar_view").show();
-        //document.getElementById('text').innerHTML = '0%';
-        //document.getElementById('bar_div').style.width = '0';
-        //document.getElementById('loadingBar_view').style.opacity = 1;
         // Post Cypher query to return node and relations and return results as graph.
         restPost({
             "statements": [
@@ -82,55 +76,42 @@ var currentNetworkRequest = "";
                alert("Error in callNeoDB: no data returned from the Database request");
                return;
                };          
-            var visData = conversionNeoResultsToVis(data);  // data here from the Neo point of view
+            visData = {};
+            visData = conversionNeoResultsToVis(data);  // data here from the Neo point of view
             console.log("callNeoDB.done: visData = ", visData);
             displayVisJsData(visData);
-            
-   /*
-            if (parsedGraphData) {                     
-                var nodes = convertNodes(parsedGraphData.nodes);
-                var edges = convertEdges(parsedGraphData.edges);
-                visData = {
-                    nodes: nodes,
-                    edges: edges
-                    };
-            currentNetworkRequest = updateCypher;
-            displayVisJsData(visData);
-            }
-            else{
-                console.log("callNeoDB: no parsedGraphData = ", parsedGraphData);
-            };
-  */
         });
     };
     
     function conversionNeoResultsToVis(neoData) {             
-        //console.log("========================== conversionNeoResultsToVis neoData = ", neoData);
-        console.log("=================================== neoData.results[0].data = ", neoData.results[0].data);
-        var currentNodesIdList = new Set();
-        var currentEdgesIdList = new Set();
-        var nodes = {}, edges = {};
-        var visNodes = [], visEdges = [];
-               
+        console.log("========================== conversionNeoResultsToVis neoData = ", neoData);
+        //console.log("=================================== neoData.results[0].data = ", neoData.results[0].data);
         if (!neoData.results[0]) {
             console.log("No data from the DB");
             return;
             };
-        
+        var currentNodesIdSet = new Set();
+        var currentEdgesIdSet = new Set();
+        var nodes = {}, edges = {};
+        var visNodes = [], visEdges = [];
+               
+       
         // row        
         neoData.results[0].data.forEach(function (row) { 
-            console.log("================== neoData.forEach(function (row) row = ", row);
-            
+            //console.log("================== neoData.forEach(function (row) row = ", row);
             
             // Warning: initial test version based on the assumption that the id from Neo4j would be reliable
             //          However in case of a delete Neo4j may reuse any old id
  
             // nodes
             row.graph.nodes.forEach(function (n) {
-                console.log("--- row.graph.nodes forEach(n)) n = ", n);
-                //currentNodesList.add(n.id);
-                if (!nodes.hasOwnProperty(n)) {       // in vis.js a nodes must appear only once
+                //console.log("--- row.graph.nodes forEach(n)) n = ", n);                
+                //var idN = n.id;
+                //console.log("     xxxxxxxxxx currentNodesIdSet = ", currentNodesIdSet, "   idN = ", n.id);
+                //console.log("                    currentNodesIdSet.id = ",currentNodesIdSet.id);
+                if (!currentNodesIdSet.has(n.id)) {       // in vis.js a nodes must appear only once
                     var nodeLabel = n.labels[0];      // test version assuming only one Neo4j label
+                    currentNodesIdSet.add(n.id);
                     visNode = {id:n.id,
                           label:nodeLabel + ": " + n.properties.name,  // to be displayed
                           group:n.labels[0], 
@@ -142,14 +123,15 @@ var currentNetworkRequest = "";
                           content: n.properties.content,
                           };   
                     visNodes.push(visNode);
-                        console.log("visNode transferred = ", visNode);
+                    //console.log("------ visNode transferred = ", visNode);
                 };
             });
 
             // edges
             row.graph.relationships.forEach(function (e) {
-                console.log("--- row.graph.relationship forEach(e)) e = ", e);
-                if (!visEdges.hasOwnProperty(e)) {       // in vis.js an edge must appear only once
+                //console.log("--- row.graph.relationship forEach(e)) e = ", e);
+                if (!currentEdgesIdSet.has(e.id)) {       // in vis.js an edge must appear only once
+                    currentEdgesIdSet.add(e.id);
                     visEdge = {id: e.id,
                            author: e.author,
                            from: e.startNode,
@@ -158,143 +140,25 @@ var currentNetworkRequest = "";
                            certainty: e.certainty,
                            importance: e.importance,
                     };
-                    console.log("visEdge transferred = ", visEdge);
+                    visEdges.push(visEdge);                 
+                    //console.log("------ visEdge transferred = ", visEdge);
                 };
             });
          }); 
           
-         var visData = {nodes: visNodes, edges: visEdges};
+         visData = {nodes: visNodes, edges: visEdges};
          console.log(">>>>>>>>>> conversionNeoResultsToVis visData = ", visData);
          return visData;
      };
 
-/*
-    function conversionNeoResultsToVis(neoData) {             
-        console.log("============================= conversionNeoResultsToVis neoData = ", neoData);
-        console.log("================================================== neoData.results[0].data = ", neoData.results[0].data); // results[0] only the column names ???
-        var nodes = {}, edges = {};
-               
-        if (!neoData.results[0]) {
-            alert("No data from the DB")
-            return;
-            };
 
-        neoData.results[0].data.forEach(function (row) {      // a row in Neo4j
-            console.log("================== neoData.forEach(function (row) row = ", row);            
-                      
-            row.graph.nodes.forEach(function (n) {
-                console.log("--- row.graph.nodes forEach(n)) n = ", n);       //,nodes[n].idDB, nodes[n].name);
-                n.id = n.properties.id;     // creation of a vis.js identification, must be unique but here approximate for test.
-                //nodes[n.id] = n;
-                //if (nodes.hasOwnProperty(n.id)) {   // ??? if not yet existing
-                //if (n.properties.hasOwnProperty(n.id)) {
-                if (n.properties.id) {
-                    console.log(">>>> n.id = ", n.id);
-                    }
-                else{
-                    console.log(">>>>> !!!!!!!!!!!!!!!!!! node has no id !!!!!!!!!!!!!!");
-                };
-            });
-            console.log("nodes = ", nodes);
-
-            row.graph.relationships.forEach(function (r) {
-                console.log("--- row.graph.relationship forEach(r)) r = ", r);
-                
-                //r.id = r.properties.idDB;
-                //edges[r.id] = r;
-                
-                if (edges.hasOwnProperty(r.id)) {
-                    console.log(">>>>> r.id = ", r.id);                    
-                }
-                else {
-                   console.log(">>>>> relationship has no id"); 
-                }
-            });
-            console.log("edges = ", edges);
-
-        });
-        
-        var nodesArray = [], edgesArray = []; 
-        console.log("filling nodesArray and edgesArray");
-        console.log("nodes = ", nodes);  // ???????????? undefined
-        //console.log("neoData.results[0].data.graph.nodes = ", neoData.results[0].data.graph.nodes);  // ???????????? undefined
-        
-        for (var n in nodes) {
-            console.log("* n = ", n);            
-            console.log("* nodes[n]] = ", nodes[n]);            
-            if (nodes.hasOwnProperty(n)) {       // properties here ?
-                nodesArray.push(nodes[n]);
-            }
-        console.log("************ nodesArray = ", nodesArray);
-        }
-
-        for (var e in edges) {  /// ??? where the name " edges " is coming from ???
-            console.log("* edges[e]] = ", edges[e]);            
-            if (edges.hasOwnProperty(e)) {
-                edgesArray.push(edges[e])
-            }
-        console.log("************ edgesArray = ", edgesArray);
-        }
-
-        return {nodes: nodesArray, edges: edgesArray};
-
-    }
-*/
-/*
-    function convertNodes(nodes) {       // why a conversion ?
-        var convertedNodes = [];
-        console.log("convertNodes: nodes = ", nodes);
-        nodes.forEach(function (node) {
-            console.log("convertNodes: nodes.forEach: node = ", node);            
-            var nodeLabel = node.labels[0];                            // ???
-            var displayedLabel = nodeLabel + ": " + node.properties.name;    //("\n" + node.properties[Object.keys(node.properties)[0]]).substr(0, 20);
-            var authorValue = node.properties.author; 
-            var certaintyValue = node.properties.certainty;
-            var importanceValue = node.properties.importance;  // = "unknown";        //node.properties.importance;
-            var contentValue = node.properties.content;
-            convertedNodes.push({
-                //id: node.id
-                id: node.properties.idDB
-                ,idDB: node.idDB
-                ,author: node.properties.author
-                ,label: displayedLabel
-                ,group: nodeLabel
-                ,certainty: certaintyValue
-                ,importance: importanceValue
-                ,content: node.properties.content
-            })
-        });
-
-        return convertedNodes;
-    }
-*/
-/*
-    function convertEdges(edges) {
-        var convertedEdges = [];
-        console.log("convertEdges. edges = ", edges);
-        edges.forEach(function (edge) {
-            var authorValue = "unknown";            
-            var certaintyValue = "unknown";      //edges.properties.certainty;
-            var importanceValue = "unknown";     //edges.properties.importance;
-            convertedEdges.push({
-                id: edge.id
-                //,idDB: edge.idDB
-                ,from: edge.startNode
-                ,to: edge.endNode
-                ,label: edge.type
-                ,author: authorValue
-                ,certainty: certaintyValue
-                ,importance: importanceValue
-            })
-        });
-
-        return convertedEdges;
-    }
-*/
-
-    function displayVisJsData(data) {
+    function displayVisJsData(visData) {
         var container = document.getElementById('graph_div');
-        console.log(">>>>>>>>>>>>>> Start displayVisData data = ", data);
+        console.log(">>>>>>>>>>>>>> Start displayVisData data = ", visData);
+        if (!visData) {
+            alert("Error : no visData");
+            return;
+        };
         var options = {
             interaction: {hover:true},
             layout: {
@@ -333,7 +197,7 @@ var currentNetworkRequest = "";
         };
 
         // initialize the network! with Ids from the VIS point of view
-        var network = new vis.Network(container, data, options);
+        var network = new vis.Network(container, visData, options);
         
         // TEST any event but not effect ???
         network.on("*", function(event, properties, senderId) {
@@ -344,22 +208,35 @@ var currentNetworkRequest = "";
         // temporary view of the content of a node when the mouse fly over this node        
         network.on("hoverNode", function (params) { 
             console.log("------- on hovernode, params = ", params); 
-            /*
-            var nodeId = params.node;   // an array but here assumed to be always of length = 1
-            console.log("nodeId = ", nodeId);
-            nodeToShow = data.nodes[nodeId];  // but most often shifted to the next node ??????
-            console.log("nodeToShow = ", nodeToShow);
-            */          
+            
+            //var nodeId = params.node;   // an array but here assumed to be always of length = 1
+            //console.log("nodeId = ", nodeId);
+            //nodeToShow = visData.nodes[nodeId];  // but most often shifted to the next node ??????
+            //console.log("nodeToShow = ", nodeToShow);
+                     
             network.selectNodes([params.node],true);  // ??????
             var nodeId = params.node;           // problem with nodeId
-            //var nodeToShow = data.nodes[nodeId];
+            //var nodeToShow = visData.nodes[nodeId];
+            // Note:  visData is a map. Ordering in a map is undefined.  a filter funtion is needed !
             // the filter function called on nodes data will return an array of nodes where node.id === nodeID
             // as there will be in principle only one node, first node of the returned array is returned as nodeToShow
-            var nodeToShow = data.nodes.filter(function (node) {return node.id === nodeId;})[0]; 
+            var nodeToShow = visData.nodes.filter(function (node) {return node.id === nodeId;})[0]; 
              
             showNodePopup(nodeToShow);
         });
-        
+ 
+         // temporary view of the content of an edge when the mouse fly over this edge       
+        network.on("hoverEdge", function (params) { 
+            console.log("hoverEdge, params = ", params);            
+            network.selectEdges([params.edge],true);  // ?? 
+            var edgeId = params.edge;           // problem with edgeId
+            //var nodeToShow = data.nodes[nodeId];
+            // the filter function called on edges data will return an array of edges where edge.id === edgeID
+            // as there will be in principle only one edge, first edge of the returned array is returned as edgeToShow
+            var edgeToShow = visData.edges.filter(function (edge) {return edge.id === edgeId;})[0];   
+            showEdgePopup(edgeToShow);
+        });
+         
         network.on("blurNode", function (params) { 
             var nodeID = params.node;
             clearViewPopup();
@@ -367,19 +244,7 @@ var currentNetworkRequest = "";
             //network.selection = [];    // test intended to clear any previous selections
             //params.node = [];
         });
-        
- 
-         // temporary view of the content of an edge when the mouse fly over this edge       
-        network.on("hoverEdge", function (params) { 
-            network.selectEdges([params.edge],true);  // ?? 
-            var edgeId = params.edge;           // problem with edgeId
-            //var nodeToShow = data.nodes[nodeId];
-            // the filter function called on edges data will return an array of edges where edge.id === edgeID
-            // as there will be in principle only one edge, first edge of the returned array is returned as edgeToShow
-            var edgeToShow = data.edges.filter(function (edge) {return edge.id === edgeId;})[0];   
-            showEdgePopup(edgeToShow);
-        });
-        
+             
         network.on("blurEdge", function (params) { 
             var nodeID = params.edge;
             clearViewPopup();
@@ -390,39 +255,53 @@ var currentNetworkRequest = "";
         
         // navigate to nodes in first level relations to the current node        
         network.on("click", function(params){
-            var nodeId = parseInt(params.nodes[0]);
-            clearViewPopup(); // ??? maybe a problem here since subsequent flyover have no content anymore ???
-            console.log("On click, nodeId = ", nodeId);
-            navigate(nodeId) ;
+            if (params.nodes[0]) {            
+            //if (params.node) {
+                var nodeId = parseInt(params.nodes[0]);
+                clearViewPopup(); // ??? maybe a problem here since subsequent flyover have no content anymore ???
+                console.log("On click on a node, nodeId = ", nodeId);
+                navigate(nodeId) ;
+            };
+            if (params.edges[0]) {
+                console.log("A click on an edge");
+            };
         });
         
         // Create a persitent edit popup, by means of a right mouse click and persitent until saved or cancelled   
         network.on("oncontext", function(params){   // "context" means here the right mouse button
             params.event.preventDefault();
-            console.log("params.nodes[0] = ", params.nodes[0], "  params.edge = ", params.edges );
+            console.log("======================== onContext: params = ", params);   
+            //console.log("visData = ", visData);         
             if (params.nodes[0] ) {
-                var nodeId = parseInt(params.nodes[0]);
-                console.log("oncontext: nodeId = ", nodeId);
-                var nodeData = data.nodes[nodeId];   // Problem: identification errors after navigation
-                console.log("oncontext: nodeData = ", nodeData);
+                //var nodeId = parseInt(params.nodes[0]);
+                var nodeId = params.nodes[0];
+                console.log("    oncontext: nodeId = ", nodeId, );
+                
+                //var nodeData = visData.nodes[nodeId];   // Problem: identification errors after navigation
+                //var nodeData = visData.nodes.filter(function (node) {return node.id === nodeId;})[0];
+                var nodeToShow = visData.nodes.filter(function (node) {return node.id === nodeId;})[0]; 
+                console.log("    oncontext: nodeData = ", nodeToShow);
                 //var nodeData = data.nodes.filter(function (node) {return node.id === nodeId;})[0];   
                 options.interaction.hover = false;   // ??? no effect
                 if (!editScreenLocked){
-                   editNodePopup(nodeData);
+                   editNodePopup(nodeToShow);
                    //params.node = [];
                 };
             }
-            else {
-                // var edgeId = parseInt(params.edges[0]);
-                var edgeId = params.edge
-                //var edgeData = data.edges[edgeId];   // Problem: identification errors after navigation
-                var edgeToShow = data.edges.filter(function (edge) {return edge.id === edgeId;})[0];
-                options.interaction.hover = false;   // ??? no effect
-                if (!editScreenLocked){
-                 editEdgePopup(nodeData);
-                 params.edgeId = [];
-                 };
+            else { 
+               if (params.edges[0]){
+                   // var edgeId = parseInt(params.edges[0]);
+                   var edgeId = params.edges[0];
+                   console.log("         edgeId = ", edgeId);  
+                   var edgeToShow = visData.edges.filter(function (edge) {return edge.id === edgeId})[0];
+                   console.log("         edgeToShow = ", edgeToShow);
+                   options.interaction.hover = false;   // ??? no effect
+                   if (!editScreenLocked){
+                       editEdgePopup(edgeToShow);
+                      params.edgeId = [];
+                   };
                };
+            };
         });
 
        
@@ -493,31 +372,29 @@ var currentNetworkRequest = "";
         };
         htm += "</table>";
         htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
-        //htm += " --- <button onclick='saveEditedNode(nodeData)'> Save</button>";
         htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
         }        
      
     function editEdgePopup(edgeData) {
-        console.log("edit EdgePopup edgeData = ", edgeData);
         clearViewPopup();       
         editPopupContainer = document.getElementById('edit_popup_div');
         editPopupContainer.style.display = "block";   //  ?
         editScreenLocked = true;
-        var htm = '<h2>Edit Relations<h2>';
+        var htm = '<h2>Edit Relations</h2>';
         htm += "<table>";  
         console.log("editEdgePopup: edgeData = ", edgeData);    
         for (var key in edgeData) {
             htm += "<tr>";
             htm += '<td><i>' + key + ' </i> </td>';
             htm += "<td>";
-            htm += `<input class='node_data' id=${key}  name=${key} value='${edgeData[key]}' width='500'/>`;
+            htm += `<input class='edge_data' id=${key}  name=${key} value='${edgeData[key]}' width='500'/>`;
             htm += "</td>";
             htm += "</tr>";
         };
         htm += "</table>";
         htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
-        htm += " --- <button onclick='saveEditedNode(edgeData)'> Save</button>";
+        htm += " --- <button onclick='saveEditedEdge()'> Save</button>";
         //htm += " --- <button onclick=  clearEditPopup   > Save</button>";  //  'saveEditedEdge()' 
         editPopupContainer.innerHTML = htm;
         }   
@@ -528,26 +405,63 @@ var currentNetworkRequest = "";
                                                                   // no map, no for in
         //var data = map(document.getElementsByClassName("node_data"));
         var currentNodeId = data.id.value;
-        var editRequest = "MATCH (n) WHERE n.id = " + currentNodeId ;   // node identification from a Neo4j point of view ???
+        var neoRequest = "MATCH (n) WHERE n.id = " + currentNodeId ;   // node identification from a Neo4j point of view ?
+        neoRequest += " SET ";
         var i = 1;
-        var dataFieldName = "TEST_fieldName";
-        var dataValue = "..................";
+        var dataFieldName;
+        var dataValue;
         var dataArr = Array.from(data);        
         for (i; i < dataArr.length; i++) {
+           if (i > 1) {neoRequest += ", "};
            dataFieldName = dataArr[i].attributes.name.value;  
            dataValue = dataArr[i].value;      
-           console.log(" dataValue = ", dataValue.toString());
-           //editRequest += " SET n." + dataFieldName + " = {" + dataValue + "} ";
-           editRequest += " SET n." + dataFieldName + ' = "' + dataValue + '"';
+           console.log("i = ", i, dataFieldName, " = ", dataValue.toString());
+           //neoRequest += " SET n." + dataFieldName + " = {" + dataValue + "} ";
+           //neoRequest += " SET n." + dataFieldName + ' = "' + dataValue + '"';
+           neoRequest += " n." + dataFieldName + ' = "' + dataValue + '"' ;
         };
         
-        editRequest += " with n " + currentSelectionNeoRequest;
-        alert("editRequest = " + editRequest);      
-        callNeoDB(editRequest);  // will work, a complete reset is safe but not efficient !
+        //neoRequest += " with n " + currentSelectionNeoRequest;
+        //neoRequest += " WITH n " + currentSelectionNeoRequest;
+        //neoRequest += " WITH n MATCH (n)-[r]-() RETURN n, r";
+        console.log("neoRequest = ", neoRequest);      
         clearEditPopup();
         editScreenLocked = false;
-        
+        callNeoDB(neoRequest);  // will work, a complete reset of the graph is safe but not efficient ! 
+        callNeoDB(currentSelectionNeoRequest) ;    
      }
+     
+     function saveEditedEdge()  {
+     console.log("saveEditedEdge")
+        var edge = document.getElementsByClassName("edge_data");  // provide anHTMLCollection, an iterable but with restrictions
+                                                                  // no map, no for in
+        var currentEdgeId = edge.id.value;
+        var neoRequest = "MATCH ()-[r]-() WHERE r.id = " + currentEdgeId ;   // node identification from a Neo4j point of view ???
+        neoRequest += " SET ";
+        var i = 1;
+        var edgeArr = Array.from(edge);        
+        for (i; i < edgeArr.length; i++) {  
+           edgeFieldName = edgeArr[i].attributes.name.value;  
+           //edgeValue = edgeArr[i].value;      
+           edgeValue = edgeArr[i].value;  
+           if (i > 1) {neoRequest += ", "};
+           //console.log("i = ", i, " edgeFieldName = ", edgeValue.toString());
+           console.log("i = ", i, " edgeFieldName = ", edgeValue);
+           //neoRequest += " SET r." + edgeFieldName + " = {" + edgeValue + "} ";
+           //neoRequest += " SET r." + edgeFieldName + ' = "' + edgeValue + '"';
+           neoRequest += "r." + edgeFieldName + ' = "' + edgeValue + '"';
+        };
+        
+        //neoRequest += " with r " + currentSelectionNeoRequest;
+        //neoRequest += " " + currentSelectionNeoRequest;
+        //neoRequest += " WITH r MATCH (a)-[r]-() RETURN r, a";
+        console.log("neoRequest = ", neoRequest);      
+        clearEditPopup();
+        editScreenLocked = false;
+        callNeoDB(neoRequest);  // will work, a complete reset is safe but not efficient !   
+        callNeoDB(currentSelectionNeoRequest);
+     }
+     
      
      function clearEditPopup(){
         console.log("clearEditPopup");
@@ -567,7 +481,8 @@ var currentNetworkRequest = "";
     	  if (!editScreenLocked) {
     	     console.log("xxxxxx naviguate from nodeId = ", nodeId);
     	     //currentSelectionNeoRequest = ' match (n)-[r]-(b) where id(n) = ' + nodeId + ' return n, b, r  LIMIT 80';      // ??? How to see also the links between the (b) ?????
-		     currentSelectionNeoRequest = ' match (n)-[r]-(b) where n.id = ' + nodeId + ' return n, b, r  LIMIT 80';      // ??? How to see also the links between the (b) ?????
+		     //currentSelectionNeoRequest = ' match (n)-[r]-(b) where n.id = ' + nodeId + ' return n, b, r  LIMIT 80';      // ??? How to see also the links between the (b) ?????
+		     currentSelectionNeoRequest = ' match (n)-[r]-(b) where id(n)= ' + nodeId + ' return n, b, r  LIMIT 80';      // ??? How to see also the links between the (b) ?????
 		     console.log("currentSelectionNeoRequest = ", currentSelectionNeoRequest);
 		     callNeoDB(currentSelectionNeoRequest);  
 		     //displayVisJsData(visData);
