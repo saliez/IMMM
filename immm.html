@@ -1,24 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Example coming from the project VIS.JS, http://visjs.org/ 
-of the company ALMENDE in Rotterdam, http://www.almende.com/home
-The project IMMM require such tools to manipulate nodes and edges.
--->
 <head>
     <meta charset="UTF-8">
     <title>IMMM</title>
 <!-- version "dev" 2017-11-06 -->
 
 <!-- ===== Required resources -->
+<!--   <script src="js_lib/jquery-2.2.4.min.js" charset="utf-8"></script>  -->
 <script src="js_lib/jquery-3.2.1.min.js" charset="utf-8"></script>
 <script src="js_lib/d3.min.js" charset="utf-8"></script>
 <script src="js_lib/vis.js"></script>
-<script type="text/javascript" src="js_lib/exampleUtil.js"></script>
-  
 <link href="immm.css" rel="stylesheet" type="text/css" />
-<!--
-<link href="js_lib/vis.css" rel="stylesheet" type="text/css" />
--->
+
+
 <script>
 
 //"use strict";  //if strict, a problem with AUTHORISATION   ???
@@ -26,10 +20,6 @@ The project IMMM require such tools to manipulate nodes and edges.
 // ===== Global session information =====
 
 console.log("=========== Start immm.html script ===============================");
-var nodes = null;
-var edges = null;
-var network = null;
-
 //var DB_server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"};
 var DB_server = {protocol:"http", host:"hobby-bikhkgaajbbfgbkeagpchfpl.dbs.graphenedb.com", port:"24789", user:"immm32", pass:"b.VpYQSs7CRWpf.QTCJmz2Lh0EDrm7q", limit:100};
 
@@ -155,7 +145,7 @@ var visData = {};
                            width: widthValue
                     };
                     visEdges.push(visEdge);                 
-                    //console.log("------ visEdge updated = ", visEdge);
+                    console.log("------ visEdge updated = ", visEdge);
                 };
             });
          }); 
@@ -167,46 +157,14 @@ var visData = {};
 
 
     function displayVisJsData(visData) {
-        var container = document.getElementById('mynetwork');
+        var container = document.getElementById('graph_div');
         console.log(">>>>>>>>>>>>>> Start displayVisData data = ", visData);
         if (!visData) {
             alert("Error : no visData");
             return;
         };
-        console.log("Options: begin of initialisations");
-        //console.log("operation = ", operation);
         var options = {
             interaction: {hover:true},
-         
-            manipulation: {
-                //enabled:true,         // no graph at all ?
-                //initiallyActive:true,   // no graph at all ?       
-                addNode: function (data, callback) {
-                    console.log("addNode, data = ", data, "   callback = ", callback);
-                    // filling in the popup DOM elements
-                    document.getElementById('operation').innerHTML = "Add a Node";
-                    editNode(data, callback);
-               },
-               editNode: function (data, callback) {
-                  // filling in the popup DOM elements
-                  console.log("editNode,  data = ", data, "  callback = ", callback);
-                  document.getElementById('operation').innerHTML = "Edit-Node";
-                  editNode(data, callback);
-              },
-              addEdge: function (data, callback) {
-                  console.log("addEdge, data = "+ data + " callback = " + callback + " data.from = " + data.from +  " data.to = " + data.to);
-                  if (data.from == data.to) {
-                      var r = confirm("Do you want to connect the node to itself?");
-                      if (r == true) {
-                          editNode(data, callback);
-                      }
-                  }
-                  else {
-                      document.getElementById('operation').innerHTML = "addEdge";              
-                      editNode(data, callback);
-                  }
-              }
-            },
             layout: {
                 improvedLayout: false,
             },
@@ -254,16 +212,8 @@ var visData = {};
             	
             }
         };
-        console.log("options = ", options);
-        // initialize the network! with visId from the VIS point of view
-        
-        function destroy() {
-          if (network !== null) {
-            network.destroy();
-            network = null;
-           }
-        }
 
+        // initialize the network! with visId from the VIS point of view
         var network = new vis.Network(container, visData, options);
         
         // TEST any event but not effect ???
@@ -372,9 +322,9 @@ var visData = {};
 
        
         network.once("stabilizationIterationsDone", function () {    // objective ???  the first time ???
-            //document.getElementById('text').innerHTML = '100%';
-            //document.getElementById('bar_div').style.width = '496px';
-            //document.getElementById('loadingBar_view').style.opacity = 0;
+            document.getElementById('text').innerHTML = '100%';
+            document.getElementById('bar_div').style.width = '496px';
+            document.getElementById('loadingBar_view').style.opacity = 0;
             // really clean the dom element
             setTimeout(function () {
                 $("#loadingBar_view").hide();
@@ -387,12 +337,12 @@ var visData = {};
             var widthFactor = params.iterations / params.total;
             var width = Math.max(minWidth, maxWidth * widthFactor);
             
-            //document.getElementById('text').innerHTML = Math.round(widthFactor * 100) + '%';
-            //document.getElementById('bar_div').style.width = width + 'px';
+            document.getElementById('text').innerHTML = Math.round(widthFactor * 100) + '%';
+            document.getElementById('bar_div').style.width = width + 'px';
 
-            //document.getElementById('text').innerHTML = '100%';
-            //document.getElementById('bar_div').style.width = '496px';
-            //document.getElementById('loadingBar_view').style.opacity = 0;
+            document.getElementById('text').innerHTML = '100%';
+            document.getElementById('bar_div').style.width = '496px';
+            document.getElementById('loadingBar_view').style.opacity = 0;
             // really clean the dom element
             setTimeout(function () {        });
             });
@@ -440,17 +390,7 @@ var visData = {};
         htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
         htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
-        }   
-       
-    function editNode(data, callback) {
-        console.log("editNode() data = ", data, "   callback = ", callback);
-        //document.getElementById('node-id').value = data.id;
-        document.getElementById('node-label').value = data.label;
-        document.getElementById('saveButton').onclick = saveData.bind(this, data, callback);
-        document.getElementById('cancelButton').onclick = clearPopUp.bind();
-        document.getElementById('network-popUp').style.display = 'block';
-    }
-             
+        }        
              
      function saveEditedNode()  {
      //console.log("saveEditNode")
@@ -537,11 +477,6 @@ var visData = {};
         //htm += " --- <button onclick=  clearEditPopup   > Save</button>";  //  'saveEditedEdge()' 
         editPopupContainer.innerHTML = htm;
         } 
-/*        
-    function editEdge(data, callback){
-        
-    }
-*/   
           
      function saveEditedEdge()  {
      console.log("saveEditedEdge")
@@ -614,15 +549,12 @@ var visData = {};
     <!--<img id="loading" src="images/ajax-loader.gif">  -->
 </label>
 
-<!--
-<div id="wrapper_view">   
--->          
-    <div id="mynetwork"></div>
-    <div class="vis-manipulation" style="display:block;">
+
+<div id="wrapper_view">             
+    <div id="graph_div"></div>
     <div id="popup_div">=== test popup_div</div> 
-    </div>
     <div id="edit_popup_div">=== test edit_popup_div </div>
-<!--
+/*
     <div id="loadingBar_view"></div>
     <div class="outerBorder">
             <div id="text">0%</div>
@@ -630,10 +562,9 @@ var visData = {};
                 <div id="bar_div"></div>
             </div>
     </div>
--->
-<!--
+*/
 </div>
--->
+
 
 </body>
 </html>
