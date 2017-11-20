@@ -1,7 +1,7 @@
 
         #graph_div {
             width: 100%;
-            height: 900px;
+            height: 800px;
             background-color: #DDD;
             border: 1px solid lightgray;
         }
@@ -114,3 +114,51 @@
             background: rgb(0, 173, 246); /* Old browsers */
             box-shadow: 2px 0 4px rgba(0, 0, 0, 0.4);
         }
+        body, select {
+      font: 10pt sans;
+    }
+    #mynetwork {
+      position:relative;
+      width: 100%;
+      height: 800px;
+      border: 1px solid lightgray;
+    }
+    table.legend_table {
+      font-size: 11px;
+      border-width:1px;
+      border-color:#d3d3d3;
+      border-style:solid;
+    }
+    table.legend_table,td {
+      border-width:1px;
+      border-color:#d3d3d3;
+      border-style:solid;
+      padding: 2px;
+    }
+    div.table_content {
+      width:80px;
+      text-align:center;
+    }
+    div.table_description {
+      width:100px;
+    }
+
+    #operation {
+      font-size:28px;
+    }
+    #network-popUp {
+      display:none;
+      position:absolute;
+      top:350px;
+      left:170px;
+      z-index:299;
+      width:250px;
+      height:120px;
+      background-color: #f9f9f9;
+      border-style:solid;
+      border-width:3px;
+      border-color: #5394ed;
+      padding:10px;
+      text-align: center;
+    }
+        

@@ -1,18 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- Example coming from the project VIS.JS, http://visjs.org/ 
+of the company ALMENDE in Rotterdam, http://www.almende.com/home
+The project IMMM require such tools to manipulate nodes and edges.
+-->
 <head>
     <meta charset="UTF-8">
     <title>IMMM</title>
-<!-- branch dev, version 2017-10-05 containing an error about parsing " nodes " -->
+<!-- version "dev" 2017-11-06 -->
 
 <!-- ===== Required resources -->
-<!--   <script src="js_lib/jquery-2.2.4.min.js" charset="utf-8"></script>  -->
-<script src="js_lib/jquery-3.2.1.js" charset="utf-8"></script>
+<script src="js_lib/jquery-3.2.1.min.js" charset="utf-8"></script>
 <script src="js_lib/d3.min.js" charset="utf-8"></script>
 <script src="js_lib/vis.js"></script>
+<script type="text/javascript" src="js_lib/exampleUtil.js"></script>
+  
 <link href="immm.css" rel="stylesheet" type="text/css" />
-
-
+<!--
+<link href="js_lib/vis.css" rel="stylesheet" type="text/css" />
+-->
 <script>
 
 //"use strict";  //if strict, a problem with AUTHORISATION   ???
@@ -20,11 +26,15 @@
 // ===== Global session information =====
 
 console.log("=========== Start immm.html script ===============================");
+var nodes = null;
+var edges = null;
+var network = null;
+
 //var DB_server = {protocol:"http", host:"localhost", port:"7474", user:"cctos", pass:"neopass", limit:"100"};
 var DB_server = {protocol:"http", host:"hobby-bikhkgaajbbfgbkeagpchfpl.dbs.graphenedb.com", port:"24789", user:"immm32", pass:"b.VpYQSs7CRWpf.QTCJmz2Lh0EDrm7q", limit:100};
 
 
-var defaultNeoRequest = "match (n),(n)-[r]-() return n, r limit 100";
+var defaultNeoRequest = "match (a)-[r]-(b) return a, b, r limit 100";
 var currentSelectionNeoRequest = defaultNeoRequest;
 var editScreenLocked = false;
 var currentNetworkRequest = "";
@@ -67,10 +77,6 @@ var visData = {};
             ]
         }).done(function (data) {
             console.log("=================================================== callNeoDB done: data = ", data);
-/*
-            $("#loading").hide();
-            $("#loadingBar_view").hide(); // not working, the loadingBar persist ???
-*/
             // Parse results and convert it to vis.js compatible data.
             if (!data) {
                alert("Error in callNeoDB: no data returned from the Database request");
@@ -84,8 +90,7 @@ var visData = {};
     };
     
     function conversionNeoResultsToVis(neoData) {             
-        console.log("========================== conversionNeoResultsToVis neoData = ", neoData);
-        //console.log("=================================== neoData.results[0].data = ", neoData.results[0].data);
+        console.log("========================== conversionNeoResultsToVis initial neoData = ", neoData);
         if (!neoData.results[0]) {
             console.log("No data from the DB");
             return;
@@ -96,52 +101,61 @@ var visData = {};
         var visNodes = [], visEdges = [];
                
        
-        // row        
+        // === row        
         neoData.results[0].data.forEach(function (row) { 
             //console.log("================== neoData.forEach(function (row) row = ", row);
-            
             // Warning: initial test version based on the assumption that the id from Neo4j would be reliable
             //          However in case of a delete Neo4j may reuse any old id
- 
-            // nodes
+
+            // === nodes
             row.graph.nodes.forEach(function (n) {
                 //console.log("--- row.graph.nodes forEach(n)) n = ", n);                
-                //var idN = n.id;
-                //console.log("     xxxxxxxxxx currentNodesIdSet = ", currentNodesIdSet, "   idN = ", n.id);
+                //var visId = n.id;
+                //console.log("     xxxxxxxxxx currentNodesIdSet = ", currentNodesIdSet, "   visId = ", n.id);
                 //console.log("                    currentNodesIdSet.id = ",currentNodesIdSet.id);
-                if (!currentNodesIdSet.has(n.id)) {       // in vis.js a nodes must appear only once
+                if (!currentNodesIdSet.has(n.id)) {       // in vis.js a nodes must must be unique
                     var nodeLabel = n.labels[0];      // test version assuming only one Neo4j label
                     currentNodesIdSet.add(n.id);
-                    visNode = {id:n.id,
-                          label:nodeLabel + ": " + n.properties.name,  // to be displayed
+                    visNode = {id:n.id,    // visId = neoId
+                          label:nodeLabel + ": " + n.properties.name,  // vis label to be displayed
                           group:n.labels[0], 
+                              // should work for any property as far as known
                           author:n.properties.author,                       // group 
                           //[n.properties],
                           name:n.properties.name,
                           certainty: n.properties.certainty,
-                          importance: n.importanceValue,
+                          importance: n.properties.importanceValue,
                           content: n.properties.content,
                           };   
                     visNodes.push(visNode);
-                    //console.log("------ visNode transferred = ", visNode);
+                    //console.log("------ visNode updated = ", visNode);
                 };
             });
 
-            // edges
+            // === edges
+            //var edgeImportance;            
             row.graph.relationships.forEach(function (e) {
                 //console.log("--- row.graph.relationship forEach(e)) e = ", e);
-                if (!currentEdgesIdSet.has(e.id)) {       // in vis.js an edge must appear only once
+                var edgeValue = 0;
+                if (!currentEdgesIdSet.has(e.id)) {       // in vis.js an edge must be unique
                     currentEdgesIdSet.add(e.id);
-                    visEdge = {id: e.id,
-                           author: e.author,
-                           from: e.startNode,
+                    if (e.properties.importance){
+                        widthValue = e.properties.importance;
+                    }
+                    else{
+                        widthValue = 1;
+                    }
+                    visEdge = {id: e.id,       // visId = neoId
+                           author: e.properties.author,
+                           from: e.startNode,    // to be checked 
                            to: e.endNode,
                            label: e.type,
-                           certainty: e.certainty,
-                           importance: e.importance,
+                           certainty: e.properties.certainty, 
+                           importance: e.properties.importance,
+                           width: widthValue
                     };
                     visEdges.push(visEdge);                 
-                    //console.log("------ visEdge transferred = ", visEdge);
+                    //console.log("------ visEdge updated = ", visEdge);
                 };
             });
          }); 
@@ -153,31 +167,76 @@ var visData = {};
 
 
     function displayVisJsData(visData) {
-        var container = document.getElementById('graph_div');
+        var container = document.getElementById('mynetwork');
         console.log(">>>>>>>>>>>>>> Start displayVisData data = ", visData);
         if (!visData) {
             alert("Error : no visData");
             return;
         };
+        console.log("Options: begin of initialisations");
+        //console.log("operation = ", operation);
         var options = {
             interaction: {hover:true},
+         
+            manipulation: {
+                //enabled:true,         // no graph at all ?
+                //initiallyActive:true,   // no graph at all ?       
+                addNode: function (data, callback) {
+                    console.log("addNode, data = ", data, "   callback = ", callback);
+                    // filling in the popup DOM elements
+                    document.getElementById('operation').innerHTML = "Add a Node";
+                    editNode(data, callback);
+               },
+               editNode: function (data, callback) {
+                  // filling in the popup DOM elements
+                  console.log("editNode,  data = ", data, "  callback = ", callback);
+                  document.getElementById('operation').innerHTML = "Edit-Node";
+                  editNode(data, callback);
+              },
+              addEdge: function (data, callback) {
+                  console.log("addEdge, data = "+ data + " callback = " + callback + " data.from = " + data.from +  " data.to = " + data.to);
+                  if (data.from == data.to) {
+                      var r = confirm("Do you want to connect the node to itself?");
+                      if (r == true) {
+                          editNode(data, callback);
+                      }
+                  }
+                  else {
+                      document.getElementById('operation').innerHTML = "addEdge";              
+                      editNode(data, callback);
+                  }
+              }
+            },
             layout: {
                 improvedLayout: false,
-                },
+            },
             nodes: {
                 shape: 'ellipse',
                 color: '#DDDDFF'
             },
             edges: {
-                arrows: 'to'
+                arrows: 'to',
+                chosen: false,
+                //dashes: [10,100,10,100],
+                //customSelectionWidth: function (width) {return width*2;},
+                //, choosen: false
+               /*
+                scaling: {
+                   customScalingFunction: function (min,max,total,value) {
+                       return value/total;
+                   },
+                min:5,
+                max:150
+                },
+                */
             },
             groups: {
             	Patient:{
-            		shape: 'circle',
+            		shape: 'box',
             		color: '#CCCCFF'
             	},
             	Patient_group: {
-            		shape: 'circle',
+            		shape: 'box',
             		color: '#BBBBEE'
             	},
             	Observation: {
@@ -195,13 +254,21 @@ var visData = {};
             	
             }
         };
+        console.log("options = ", options);
+        // initialize the network! with visId from the VIS point of view
+        
+        function destroy() {
+          if (network !== null) {
+            network.destroy();
+            network = null;
+           }
+        }
 
-        // initialize the network! with Ids from the VIS point of view
         var network = new vis.Network(container, visData, options);
         
         // TEST any event but not effect ???
         network.on("*", function(event, properties, senderId) {
-            console.log("TEST any event, event= ", event, "   properties = ", properties);
+            console.log("TEST any event, event= ", event, "   properties = ", properties, "senderId = ", senderId);
         });
         
 
@@ -225,12 +292,11 @@ var visData = {};
             showNodePopup(nodeToShow);
         });
  
-         // temporary view of the content of an edge when the mouse fly over this edge       
+        // temporary view of the content of an edge when the mouse fly over this edge       
         network.on("hoverEdge", function (params) { 
             console.log("hoverEdge, params = ", params);            
             network.selectEdges([params.edge],true);  // ?? 
             var edgeId = params.edge;           // problem with edgeId
-            //var nodeToShow = data.nodes[nodeId];
             // the filter function called on edges data will return an array of edges where edge.id === edgeID
             // as there will be in principle only one edge, first edge of the returned array is returned as edgeToShow
             var edgeToShow = visData.edges.filter(function (edge) {return edge.id === edgeId;})[0];   
@@ -297,7 +363,7 @@ var visData = {};
                    console.log("         edgeToShow = ", edgeToShow);
                    options.interaction.hover = false;   // ??? no effect
                    if (!editScreenLocked){
-                       editEdgePopup(edgeToShow);
+                      editEdgePopup(edgeToShow);
                       params.edgeId = [];
                    };
                };
@@ -306,9 +372,9 @@ var visData = {};
 
        
         network.once("stabilizationIterationsDone", function () {    // objective ???  the first time ???
-            document.getElementById('text').innerHTML = '100%';
-            document.getElementById('bar_div').style.width = '496px';
-            document.getElementById('loadingBar_view').style.opacity = 0;
+            //document.getElementById('text').innerHTML = '100%';
+            //document.getElementById('bar_div').style.width = '496px';
+            //document.getElementById('loadingBar_view').style.opacity = 0;
             // really clean the dom element
             setTimeout(function () {
                 $("#loadingBar_view").hide();
@@ -321,12 +387,12 @@ var visData = {};
             var widthFactor = params.iterations / params.total;
             var width = Math.max(minWidth, maxWidth * widthFactor);
             
-            document.getElementById('text').innerHTML = Math.round(widthFactor * 100) + '%';
-            document.getElementById('bar_div').style.width = width + 'px';
+            //document.getElementById('text').innerHTML = Math.round(widthFactor * 100) + '%';
+            //document.getElementById('bar_div').style.width = width + 'px';
 
-            document.getElementById('text').innerHTML = '100%';
-            document.getElementById('bar_div').style.width = '496px';
-            document.getElementById('loadingBar_view').style.opacity = 0;
+            //document.getElementById('text').innerHTML = '100%';
+            //document.getElementById('bar_div').style.width = '496px';
+            //document.getElementById('loadingBar_view').style.opacity = 0;
             // really clean the dom element
             setTimeout(function () {        });
             });
@@ -374,30 +440,17 @@ var visData = {};
         htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
         htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
-        }        
-     
-    function editEdgePopup(edgeData) {
-        clearViewPopup();       
-        editPopupContainer = document.getElementById('edit_popup_div');
-        editPopupContainer.style.display = "block";   //  ?
-        editScreenLocked = true;
-        var htm = '<h2>Edit Relations</h2>';
-        htm += "<table>";  
-        console.log("editEdgePopup: edgeData = ", edgeData);    
-        for (var key in edgeData) {
-            htm += "<tr>";
-            htm += '<td><i>' + key + ' </i> </td>';
-            htm += "<td>";
-            htm += `<input class='edge_data' id=${key}  name=${key} value='${edgeData[key]}' width='500'/>`;
-            htm += "</td>";
-            htm += "</tr>";
-        };
-        htm += "</table>";
-        htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
-        htm += " --- <button onclick='saveEditedEdge()'> Save</button>";
-        //htm += " --- <button onclick=  clearEditPopup   > Save</button>";  //  'saveEditedEdge()' 
-        editPopupContainer.innerHTML = htm;
         }   
+       
+    function editNode(data, callback) {
+        console.log("editNode() data = ", data, "   callback = ", callback);
+        //document.getElementById('node-id').value = data.id;
+        document.getElementById('node-label').value = data.label;
+        document.getElementById('saveButton').onclick = saveData.bind(this, data, callback);
+        document.getElementById('cancelButton').onclick = clearPopUp.bind();
+        document.getElementById('network-popUp').style.display = 'block';
+    }
+             
              
      function saveEditedNode()  {
      //console.log("saveEditNode")
@@ -405,7 +458,7 @@ var visData = {};
                                                                   // no map, no for in
         //var data = map(document.getElementsByClassName("node_data"));
         var currentNodeId = data.id.value;
-        var neoRequest = "MATCH (n) WHERE n.id = " + currentNodeId ;   // node identification from a Neo4j point of view ?
+        var neoRequest = "MATCH (n) WHERE id(n)=" + currentNodeId ;   // node identification from a Neo4j point of view ?
         neoRequest += " SET ";
         var i = 1;
         var dataFieldName;
@@ -415,7 +468,7 @@ var visData = {};
            if (i > 1) {neoRequest += ", "};
            dataFieldName = dataArr[i].attributes.name.value;  
            dataValue = dataArr[i].value;      
-           console.log("i = ", i, dataFieldName, " = ", dataValue.toString());
+           console.log("saveEditedNodei = ", i, dataFieldName, " = ", dataValue.toString());
            //neoRequest += " SET n." + dataFieldName + " = {" + dataValue + "} ";
            //neoRequest += " SET n." + dataFieldName + ' = "' + dataValue + '"';
            neoRequest += " n." + dataFieldName + ' = "' + dataValue + '"' ;
@@ -423,14 +476,13 @@ var visData = {};
         
         //neoRequest += " with n " + currentSelectionNeoRequest;
         //neoRequest += " WITH n " + currentSelectionNeoRequest;
-        //neoRequest += " WITH n MATCH (n)-[r]-() RETURN n, r";
+        neoRequest += " WITH n MATCH (n)-[r]-() RETURN n, r";
         console.log("neoRequest = ", neoRequest);      
         clearEditPopup();
         editScreenLocked = false;
         callNeoDB(neoRequest);  // will work, a complete reset of the graph is safe but not efficient ! 
         callNeoDB(currentSelectionNeoRequest) ;    
      }
-     
      function saveEditedEdge()  {
      console.log("saveEditedEdge")
         var edge = document.getElementsByClassName("edge_data");  // provide anHTMLCollection, an iterable but with restrictions
@@ -461,6 +513,63 @@ var visData = {};
         callNeoDB(neoRequest);  // will work, a complete reset is safe but not efficient !   
         callNeoDB(currentSelectionNeoRequest);
      }
+
+     
+    function editEdgePopup(edgeData) {
+        clearViewPopup();       
+        editPopupContainer = document.getElementById('edit_popup_div');
+        editPopupContainer.style.display = "block";   //  ?
+        editScreenLocked = true;
+        var htm = '<h2>Edit Relations</h2>';
+        htm += "<table>";  
+        console.log("editEdgePopup: edgeData = ", edgeData);    
+        for (var key in edgeData) {
+            htm += "<tr>";
+            htm += '<td><i>' + key + ' </i> </td>';
+            htm += "<td>";
+            htm += `<input class='edge_data' id=${key}  name=${key} value='${edgeData[key]}' width='500'/>`;
+            htm += "</td>";
+            htm += "</tr>";
+        };
+        htm += "</table>";
+        htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
+        htm += " --- <button onclick='saveEditedEdge()'> Save</button>";
+        //htm += " --- <button onclick=  clearEditPopup   > Save</button>";  //  'saveEditedEdge()' 
+        editPopupContainer.innerHTML = htm;
+        } 
+/*        
+    function editEdge(data, callback){
+        
+    }
+*/   
+          
+     function saveEditedEdge()  {
+     console.log("saveEditedEdge")
+        var edge = document.getElementsByClassName("edge_data");  // provide anHTMLCollection, an iterable but with restrictions
+                                                                  // no map, no for in
+        var currentEdgeId = edge.id.value;
+        var neoRequest = "MATCH (x)-[r]-(y) WHERE id(r) = " + currentEdgeId ;  
+        neoRequest += " SET ";
+        var i = 1;
+        var edgeArr = Array.from(edge);        
+        for (i; i < edgeArr.length; i++) {  
+           edgeFieldName = edgeArr[i].attributes.name.value;  
+           //edgeValue = edgeArr[i].value;      
+           edgeValue = edgeArr[i].value;  
+           if (i > 1) {neoRequest += ", "};
+           //console.log("saveEditEdge i = ", i, " edgeFieldName = ", edgeValue.toString());
+           console.log("i = ", i, " edgeFieldName = ", edgeValue);
+           //neoRequest += " SET r." + edgeFieldName + " = {" + edgeValue + "} ";
+           //neoRequest += " SET r." + edgeFieldName + ' = "' + edgeValue + '"';
+           neoRequest += "r." + edgeFieldName + ' = "' + edgeValue + '"';
+        };
+        
+        neoRequest += " RETURN x, y, r";
+        console.log("neoRequest = ", neoRequest);      
+        clearEditPopup();
+        editScreenLocked = false;
+        callNeoDB(neoRequest);  // will work, a complete reset is safe but not efficient !   
+     }
      
      
      function clearEditPopup(){
@@ -480,9 +589,8 @@ var visData = {};
     function navigate(nodeId)  {
     	  if (!editScreenLocked) {
     	     console.log("xxxxxx naviguate from nodeId = ", nodeId);
-    	     //currentSelectionNeoRequest = ' match (n)-[r]-(b) where id(n) = ' + nodeId + ' return n, b, r  LIMIT 80';      // ??? How to see also the links between the (b) ?????
-		     //currentSelectionNeoRequest = ' match (n)-[r]-(b) where n.id = ' + nodeId + ' return n, b, r  LIMIT 80';      // ??? How to see also the links between the (b) ?????
-		     currentSelectionNeoRequest = ' match (n)-[r]-(b) where id(n)= ' + nodeId + ' return n, b, r  LIMIT 80';      // ??? How to see also the links between the (b) ?????
+    	     currentSelectionNeoRequest = ' match (n) where id(n)= ' + nodeId + ' WITH n MATCH (n)-[r]-(b) return n, b, r  LIMIT 100';
+    	         // ??? How to see also the links between the (b) ?  Well working on a temporary user on Graphene using "bolt" access     
 		     console.log("currentSelectionNeoRequest = ", currentSelectionNeoRequest);
 		     callNeoDB(currentSelectionNeoRequest);  
 		     //displayVisJsData(visData);
@@ -506,12 +614,15 @@ var visData = {};
     <!--<img id="loading" src="images/ajax-loader.gif">  -->
 </label>
 
-
-<div id="wrapper_view">             
-    <div id="graph_div"></div>
+<!--
+<div id="wrapper_view">   
+-->          
+    <div id="mynetwork"></div>
+    <div class="vis-manipulation" style="display:block;">
     <div id="popup_div">=== test popup_div</div> 
+    </div>
     <div id="edit_popup_div">=== test edit_popup_div </div>
-/*
+<!--
     <div id="loadingBar_view"></div>
     <div class="outerBorder">
             <div id="text">0%</div>
@@ -519,9 +630,10 @@ var visData = {};
                 <div id="bar_div"></div>
             </div>
     </div>
-*/
+-->
+<!--
 </div>
-
+-->
 
 </body>
 </html>
