@@ -322,7 +322,6 @@ var visData = {};
         // navigate to nodes in first level relations to the current node        
         network.on("click", function(params){
             if (params.nodes[0]) {            
-            //if (params.node) {
                 var nodeId = parseInt(params.nodes[0]);
                 clearViewPopup(); // ??? maybe a problem here since subsequent flyover have no content anymore ???
                 console.log("On click on a node, nodeId = ", nodeId);
@@ -354,8 +353,7 @@ var visData = {};
                    //params.node = [];
                 };
             }
-            else { 
-               if (params.edges[0]){
+            else if (params.edges[0]){
                    // var edgeId = parseInt(params.edges[0]);
                    var edgeId = params.edges[0];
                    console.log("         edgeId = ", edgeId);  
@@ -366,7 +364,10 @@ var visData = {};
                       editEdgePopup(edgeToShow);
                       params.edgeId = [];
                    };
-               };
+              
+            }
+            else {
+                console.log("A right click on the backgroud, in order to create a new node");
             };
         });
 
@@ -436,8 +437,10 @@ var visData = {};
             htm += "</td>";
             htm += "</tr>";
         };
-        htm += "</table>";
-        htm += "<br /><button onclick='clearEditPopup()'> Cancel </button>";
+        htm += "</table><br />";
+        htm += "<button onclick='addNodeRequest()'>Add Node</button>";
+        htm += " --- <button onclick='addEdgeRequest()'>Add relation</button></br >";
+        htm += "<button onclick='clearEditPopup()'> Cancel </button>";
         htm += " --- <button onclick='saveEditedNode()'> Save</button>";
         editPopupContainer.innerHTML = htm;
         }   
@@ -449,9 +452,21 @@ var visData = {};
         document.getElementById('saveButton').onclick = saveData.bind(this, data, callback);
         document.getElementById('cancelButton').onclick = clearPopUp.bind();
         document.getElementById('network-popUp').style.display = 'block';
-    }
+    };
              
              
+     function addNodeRequest () {
+         console.mog("addNodeRequest");
+         // ...........................
+         }     
+     function addEdgeRequest() {
+         console.log("addEdgeRequest");
+         inMode = "addEdge";
+         //options.manipulation.enabled = true;  // error
+         //..........................
+         }; 
+     
+     
      function saveEditedNode()  {
      //console.log("saveEditNode")
         var data = document.getElementsByClassName("node_data");  // provide anHTMLCollection, an iterable but with restrictions
@@ -589,8 +604,12 @@ var visData = {};
     function navigate(nodeId)  {
     	  if (!editScreenLocked) {
     	     console.log("xxxxxx naviguate from nodeId = ", nodeId);
-    	     currentSelectionNeoRequest = ' match (n) where id(n)= ' + nodeId + ' WITH n MATCH (n)-[r]-(b) return n, b, r  LIMIT 100';
-    	         // ??? How to see also the links between the (b) ?  Well working on a temporary user on Graphene using "bolt" access     
+    	     currentSelectionNeoRequest = ' match (a) where id(a)= ' + nodeId + ' WITH a MATCH (a)-[r]-(b) return a, b, r LIMIT 100';
+    	     //currentSelectionNeoRequest = ' match (a) where id(a)= ' + nodeId + ' WITH a MATCH (a)-[r]-(b)-[r2]-(b) return a, b, r, r2 LIMIT 100';
+    	         // ??? How to see also the links between the (b) ? 
+    	         // Well working when there is no condition as in the inital request for all
+    	             // "match (a)-[r]-(b) return a, b, r limit 100" 
+    	         // Well working on a temporary user on Graphene using "bolt" access     
 		     console.log("currentSelectionNeoRequest = ", currentSelectionNeoRequest);
 		     callNeoDB(currentSelectionNeoRequest);  
 		     //displayVisJsData(visData);
