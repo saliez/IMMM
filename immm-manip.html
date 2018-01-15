@@ -1,0 +1,438 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+      "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<!-- Example coming from the project VIS.JS, http://visjs.org/ 
+of the company ALMENDE in Rotterdam, http://www.almende.com/home
+The project IMMM needs such tools to manipulate nodes and edges.
+-->
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+  <title>IMMM-Manipulation</title>
+
+  <style type="text/css">
+    body, select {
+      font: 10pt sans;
+    }
+    #mynetwork {
+      position:relative;
+      width: 1200px;
+      height: 600px;
+      border: 1px solid lightgray;
+    }
+    table.legend_table {
+      font-size: 11px;
+      border-width:1px;
+      border-color:#d3d3d3;
+      border-style:solid;
+    }
+    table.legend_table,td {
+      border-width:1px;
+      border-color:#d3d3d3;
+      border-style:solid;
+      padding: 2px;
+    }
+    div.table_content {
+      width:80px;
+      text-align:center;
+    }
+    div.table_description {
+      width:100px;
+    }
+
+    #operation {
+      font-size:28px;
+    }
+    #network-popUp {
+      display:none;
+      position:absolute;
+      top:350px;
+      left:170px;
+      z-index:299;
+      width:250px;
+      height:120px;
+      background-color: #f9f9f9;
+      border-style:solid;
+      border-width:3px;
+      border-color: #5394ed;
+      padding:10px;
+      text-align: center;
+    }
+  </style>
+//<script type="text/javascript" src="js_lib/exampleUtil-manip-test.js"></script>
+<script src="js_lib/jquery-3.2.1.min.js" charset="utf-8"></script>
+  
+  <script type="text/javascript" src="js_lib/vis.js"></script>
+  <link href="js_lib/vis.css" rel="stylesheet" type="text/css" />
+
+  <script type="text/javascript">
+    console.log("Start of the initialisation");
+    var nodes = null;
+    var edges = null;
+    var network = null;
+    // randomly create some nodes and edges
+    //var data = getScaleFreeNetwork(25);
+    //var seed = 2;
+    //console.log("data initialisated, data = ", data);
+    
+var defaultNeoRequest = "match (a)-[r]-(b) return a, b, r limit 100";
+var currentSelectionNeoRequest = defaultNeoRequest;
+var editScreenLocked = false;
+var currentNetworkRequest = "";
+var visData = {};
+var DB_server = {protocol:"http", host:"hobby-bikhkgaajbbfgbkeagpchfpl.dbs.graphenedb.com", port:"24789", user:"immm32", pass:"b.VpYQSs7CRWpf.QTCJmz2Lh0EDrm7q", limit:100};
+console.log("DB_server = ", DB_server);
+var data = callNeoDB(defaultNeoRequest);
+
+
+
+
+/*
+function getScaleFreeNetwork(nodeCount) {
+  console.log("exampleUtil.js : getScaleFreeNetwork(nodeCount)"); 
+  var nodes = [];
+  var edges = [];
+  var connectionCount = [];
+
+  // randomly create some nodes and edges
+  for (var i = 0; i < nodeCount; i++) {
+    nodes.push({
+      id: i,
+      label: String(i)
+    });
+
+    connectionCount[i] = 0;
+
+    // create edges in a scale-free-network way
+    if (i == 1) {
+      var from = i;
+      var to = 0;
+      edges.push({
+        from: from,
+        to: to
+      });
+      connectionCount[from]++;
+      connectionCount[to]++;
+    }
+    else if (i > 1) {
+      var conn = edges.length * 2;
+      var rand = Math.floor(Math.random() * conn);
+      var cum = 0;
+      var j = 0;
+      while (j < connectionCount.length && cum < rand) {
+        cum += connectionCount[j];
+        j++;
+      }
+
+
+      var from = i;
+      var to = j;
+      edges.push({
+        from: from,
+        to: to
+      });
+      connectionCount[from]++;
+      connectionCount[to]++;
+    }
+  }
+
+  return {nodes:nodes, edges:edges};
+}
+*/
+
+// ===== Function to call to display a new graph.
+
+
+    function restPost(data) {
+        var strData = JSON.stringify(data);
+        console.log("RestPost: strData = ", strData);       
+        return $.ajax({
+            type: "POST",
+            beforeSend: function (request) {
+                if (AUTHORIZATION != undefined) {
+                    request.setRequestHeader("Authorization", AUTHORIZATION);
+                }
+            },
+            url: DB_server.protocol + "://" + DB_server.host + ":" + DB_server.port + "/db/data/transaction/commit",            
+            contentType: "application/json",    // attention to ".value "
+            data: strData
+        });
+    }
+
+
+var data = callNeoDB(defaultNeoRequest);
+
+    function callNeoDB(updateCypher) {
+        console.log("callNeoDB start");
+        console.log("DB_server = ", DB_server);
+        // Create the authorization header for the ajax request. 
+        //DB_server.host = hostinput.value;
+        var test = updateCypher;        
+        AUTHORIZATION = "Basic " + btoa(DB_server.user + ":" + DB_server.pass);
+        console.log("AUTHORIZATION = ", AUTHORIZATION);
+        // Post Cypher query to return node and relations and return results as graph.
+        restPost({
+            "statements": [
+                {
+                    "statement": updateCypher, 
+                    "resultDataContents": ["graph"]
+                }
+            ]
+        }).done(function (data) {
+            console.log("=================================================== callNeoDB done: data = ", data);
+            // Parse results and convert it to vis.js compatible data.
+            if (!data) {
+               alert("Error in callNeoDB: no data returned from the Database request");
+               return;
+               };          
+            visData = {};
+            visData = conversionNeoResultsToVis(data);  // data here from the Neo point of view
+            console.log("callNeoDB.done: visData = ", visData);
+            //displayVisJsData(visData);
+            draw(visData);
+        });
+    };
+    
+    function conversionNeoResultsToVis(neoData) {             
+        console.log("========================== conversionNeoResultsToVis initial neoData = ", neoData);
+        if (!neoData.results[0]) {
+            console.log("No data from the DB");
+            return;
+            };
+        var currentNodesIdSet = new Set();
+        var currentEdgesIdSet = new Set();
+        var nodes = {}, edges = {};
+        var visNodes = [], visEdges = [];
+               
+       
+        // === row        
+        neoData.results[0].data.forEach(function (row) { 
+            //console.log("================== neoData.forEach(function (row) row = ", row);
+            // Warning: initial test version based on the assumption that the id from Neo4j would be reliable
+            //          However in case of a delete Neo4j may reuse any old id
+
+            // === nodes
+            row.graph.nodes.forEach(function (n) {
+                //console.log("--- row.graph.nodes forEach(n)) n = ", n);                
+                //var visId = n.id;
+                //console.log("     xxxxxxxxxx currentNodesIdSet = ", currentNodesIdSet, "   visId = ", n.id);
+                //console.log("                    currentNodesIdSet.id = ",currentNodesIdSet.id);
+                if (!currentNodesIdSet.has(n.id)) {       // in vis.js a nodes must must be unique
+                    var nodeLabel = n.labels[0];      // test version assuming only one Neo4j label
+                    currentNodesIdSet.add(n.id);
+                    visNode = {id:n.id,    // visId = neoId
+                          label:nodeLabel + ": " + n.properties.name,  // vis label to be displayed
+                          group:n.labels[0], 
+                              // should work for any property as far as known
+                          author:n.properties.author,                       // group 
+                          //[n.properties],
+                          name:n.properties.name,
+                          certainty: n.properties.certainty,
+                          importance: n.properties.importanceValue,
+                          content: n.properties.content,
+                          };   
+                    visNodes.push(visNode);
+                    //console.log("------ visNode updated = ", visNode);
+                };
+            });
+
+            // === edges
+            //var edgeImportance;            
+            row.graph.relationships.forEach(function (e) {
+                //console.log("--- row.graph.relationship forEach(e)) e = ", e);
+                var edgeValue = 0;
+                if (!currentEdgesIdSet.has(e.id)) {       // in vis.js an edge must be unique
+                    currentEdgesIdSet.add(e.id);
+                    if (e.properties.importance){
+                        widthValue = e.properties.importance;
+                    }
+                    else{
+                        widthValue = 1;
+                    }
+                    visEdge = {id: e.id,       // visId = neoId
+                           author: e.properties.author,
+                           from: e.startNode,    // to be checked 
+                           to: e.endNode,
+                           label: e.type,
+                           certainty: e.properties.certainty, 
+                           importance: e.properties.importance,
+                           width: widthValue
+                    };
+                    visEdges.push(visEdge);                 
+                    //console.log("------ visEdge updated = ", visEdge);
+                };
+            });
+         }); 
+          
+         visData = {nodes: visNodes, edges: visEdges};
+         console.log(">>>>>>>>>> conversionNeoResultsToVis visData = ", visData);
+         return visData;
+     };
+
+
+    function destroy() {
+      if (network !== null) {
+        network.destroy();
+        network = null;
+      }
+    }
+
+    //function draw() {
+    function draw(visData) {
+      console.log("Start of draw()");
+      destroy();
+      nodes = [];
+      edges = [];
+
+      // create a network
+      var container = document.getElementById('mynetwork');
+      var options = {
+        //layout: {randomSeed:seed}, // just to make sure the layout is the same when the locale is changed
+        locale: document.getElementById('locale').value,
+        manipulation: {
+          addNode: function (data, callback) {
+            console.log("addNode, callback = ", callback, " data = ", data);
+            // filling in the popup DOM elements
+            document.getElementById('operation').innerHTML = "Add a Node";
+            document.getElementById('node-id').value = data.id;
+            document.getElementById('node-label').value = data.label;
+            document.getElementById('saveButton').onclick = saveData.bind(this, data, callback);
+            document.getElementById('cancelButton').onclick = clearPopUp.bind();
+            document.getElementById('network-popUp').style.display = 'block';
+          },
+          editNode: function (data, callback) {
+            // filling in the popup DOM elements
+            console.log("editNode, callback = ", callback, " data = ", data);
+            document.getElementById('operation').innerHTML = "Edit-Node";
+            document.getElementById('node-id').value = data.id;
+            console.log("editNode, node-label before = ", data.label)
+            document.getElementById('node-label').value = data.label;
+            console.log("editNode, node-label after = ", data.label)
+            document.getElementById('saveButton').onclick = saveData.bind(this, data, callback);
+            document.getElementById('cancelButton').onclick = cancelEdit.bind(this,callback);
+            document.getElementById('network-popUp').style.display = 'block';
+          },
+          addEdge: function (data, callback) {
+            console.log("addEdge, data = "+ data + " callback = " + callback + " data.from = " + data.from +  " data.to = " + data.to);
+            if (data.from == data.to) {
+              var r = confirm("Do you want to connect the node to itself?");
+              if (r == true) {
+                callback(data);
+              }
+            }
+            else {
+              callback(data);
+            }
+          }
+        },
+        layout: {
+                improvedLayout: false
+            },
+            nodes: {
+                shape: 'ellipse',
+                color: '#DDDDFF'
+            },
+            edges: {
+                arrows: 'to',
+                chosen: false,
+                //dashes: [10,100,10,100],
+                //customSelectionWidth: function (width) {return width*2;},
+                //, choosen: false
+               /*
+                scaling: {
+                   customScalingFunction: function (min,max,total,value) {
+                       return value/total;
+                   },
+                min:5,
+                max:150
+                },
+                */
+            },
+            groups: {
+            	Patient:{
+            		shape: 'box',
+            		color: '#CCCCFF'
+            	},
+            	Patient_group: {
+            		shape: 'box',
+            		color: '#BBBBEE'
+            	},
+            	Observation: {
+            		shape: 'box',
+            		color: 'yellow'
+            	},
+            	HealthIssue:{
+                   shape: 'ellipse',           	    
+            	    color: 'red'
+            	},
+            	Action:{
+            	    shape: 'box',
+            	    color: '#40ED10'
+            	},
+            	
+            }
+      };
+      console.log("Draw a new network");
+      //network = new vis.Network(container, data, options);   // **********************
+      network = new vis.Network(container, visData, options);   // **********************
+    }
+
+    function clearPopUp() {
+      document.getElementById('saveButton').onclick = null;
+      document.getElementById('cancelButton').onclick = null;
+      document.getElementById('network-popUp').style.display = 'none';   //......................
+    }
+
+    function cancelEdit(callback) {
+      console.log("CancelEdit")      
+      clearPopUp();
+      callback(null);
+    }
+
+    function saveData(data,callback) {
+      console.log("saveData() :  callback = ", callback, "  saveData: data = ", data);
+      data.id = document.getElementById('node-id').value;
+      data.label = document.getElementById('node-label').value;
+      console.log("saveData():  callback = ", callback, " data = ", data);
+      clearPopUp();
+      callback(data);
+    }
+
+  </script>
+ 
+</head>
+
+//<body onload="draw();">
+<body  onload="callNeoDB(currentSelectionNeoRequest);" style="background-color:#cccccc">
+<h2>Editing the nodes and edges test version 2018-01-15</h2>
+<p style="width: 700px; font-size:14px; text-align: justify;">
+  The localization is only relevant to the manipulation buttons.
+</p>
+
+<p>
+  <label for="locale">Select a locale:</label>
+  <select id="locale" onchange="draw();">
+    <option value="en" selected>en</option>
+    <option value="nl">nl</option>
+  </select>
+</p>
+
+<div id="network-popUp">
+  <span id="operation">node</span> <br>
+  <table style="margin:auto;">
+    <tr>
+      <td>id</td><td><input id="node-id" value="new value" /></td>
+    </tr>
+    <tr>
+      <td>label</td><td><input id="node-label" value="new value" /></td>
+    </tr>
+  </table>
+  <input type="button" value="save" id="saveButton" />
+  <input type="button" value="cancel" id="cancelButton" />
+</div>
+<br />
+<div id="mynetwork"></div>
+
+</body>
+</html>
+
