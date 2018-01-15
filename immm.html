@@ -13,7 +13,7 @@ The project IMMM require such tools to manipulate nodes and edges.
 <script src="js_lib/jquery-3.2.1.min.js" charset="utf-8"></script>
 <script src="js_lib/d3.min.js" charset="utf-8"></script>
 <script src="js_lib/vis.js"></script>
-<script type="text/javascript" src="js_lib/exampleUtil.js"></script>
+//<script type="text/javascript" src="js_lib/exampleUtil.js"></script>
   
 <link href="immm.css" rel="stylesheet" type="text/css" />
 <!--
@@ -319,7 +319,7 @@ var visData = {};
             //network.selection = [];    // test intended to clear any previous selections
             //params.edge = [];
         });
-        
+      
         // navigate to nodes in first level relations to the current node        
         network.on("click", function(params){
             if (params.nodes[0]) {            
@@ -332,7 +332,7 @@ var visData = {};
                 console.log("A click on an edge");
             };
         });
-        
+
         // Create a persitent edit popup, by means of a right mouse click and persitent until saved or cancelled   
         network.on("oncontext", function(params){   // "context" means here the right mouse button
             params.event.preventDefault();
@@ -457,7 +457,10 @@ var visData = {};
              
              
      function addNodeRequest () {
-         console.mog("addNodeRequest");
+         console.log("addNodeRequest");
+         //manipulation.addNodeMode();                     // error: not defined
+         //manipulation.addNode(visData, callback);        // error: not defined
+         
          // ...........................
          }     
      function addEdgeRequest() {
@@ -465,6 +468,7 @@ var visData = {};
          //console.log("inMode = ", inMode);  // error not defined here
          //options.manipulation.enabled = true;  // error
          //..........................
+         addEdge(visData); // Reference error
          }; 
      
      
@@ -626,7 +630,7 @@ var visData = {};
 
 
 <label>
-   Test 0.3: Neo4j request: <input id="dbRequest" type="textarea" size="160" value="">
+   Test 0.4: Neo4j request: <input id="dbRequest" type="textarea" size="160" value="">
 </label>
 
 <label>

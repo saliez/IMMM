@@ -77,6 +77,7 @@ function seededRandom() {
   return x - Math.floor(x);
 }
 
+
 function  Seeded(nodeCount, seed) {
   console.log("exampleUtil.js : getScaleFreeNetworkSeeded(nodeCount, seed)")
   if (seed) {
