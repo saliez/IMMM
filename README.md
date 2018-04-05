@@ -6,4 +6,4 @@ The objective is to facilitate understanding and collaboration between the membe
 across Internet by means of graphs.
 
 
-More at [www.chos-wg.eu/Projects/Medical-Graphs/Medical-Graphs-Overview.html](http://www.chos-wg.eu/Projects/Medical-Graphs/Medical-Graphs-Overview.html)
+More at [www.chos-wg.org/Projects/IMMM/main-IMMM-Overview.html](http://www.chos-wg.org/Projects/IMMM/main-IMMM-Overview.html)
